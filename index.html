@@ -1,0 +1,2912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TerraLingua — Pastel Vector Road Map & Bilingual Explorer</title>
+  <meta name="description" content="Explore world maps in a soft pastel vector aesthetic with dual-language bilingual labels (Primary Local Script & English) powered by Leaflet, OpenStreetMap, and Tailwind CSS.">
+
+  <!-- Google Fonts: Inter & Plus Jakarta Sans & Noto multi-script support -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            pastel: {
+              beige: '#F5F2EB',
+              sand: '#EAE5D9',
+              greenLight: '#C8E6C9',
+              greenSoft: '#A8D5BA',
+              blueWater: '#A0C4FF',
+              orangeRoad: '#F4A261',
+              orangeDark: '#E76F51',
+              greyRoad: '#8D99AE',
+              redViolet: '#C71585',
+              softBlue: '#4895EF',
+            }
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '"Noto Sans"', 'sans-serif'],
+          },
+          boxShadow: {
+            'pastel': '0 8px 30px rgba(141, 153, 174, 0.15)',
+            'pin': '0 10px 25px -5px rgba(0, 0, 0, 0.25)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Custom CSS for Pastel Vector Road Map Theme & Markers -->
+  <style>
+    /* Base styling */
+    :root {
+      --bg-pastel: #F5F2EB;
+      --water-pastel: #A0C4FF;
+      --green-pastel: #C8E6C9;
+      --road-orange: #F4A261;
+      --road-grey: #8D99AE;
+    }
+
+    body {
+      background-color: #F5F2EB;
+      color: #2b2d42;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    /* Custom Leaflet Pastel Tiles filter styling */
+    .leaflet-container {
+      background-color: #F5F2EB !important;
+      font-family: inherit;
+    }
+
+    /* Pastel Vector Road theme filter tuned to highlight streets, parks, and water */
+    .pastel-tiles {
+      /* Tuned CSS filter matrix to give pastel aesthetic while keeping road lines, parks, and street names razor-sharp */
+      filter: sepia(0.08) saturate(1.18) brightness(1.01) contrast(1.03);
+      transition: filter 0.4s ease;
+    }
+
+    .pastel-tiles-warm {
+      filter: sepia(0.26) saturate(1.22) hue-rotate(-8deg) brightness(1.02) contrast(1.02);
+    }
+
+    .pastel-tiles-clean {
+      filter: contrast(1.05) saturate(1.08);
+    }
+
+    /* Custom teardrop marker animations */
+    @keyframes teardropPulse {
+      0% {
+        transform: scale(0.6);
+        opacity: 0.8;
+      }
+      70% {
+        transform: scale(1.4);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(1.4);
+        opacity: 0;
+      }
+    }
+
+    .pulse-ring {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      left: 50%;
+      bottom: -6px;
+      margin-left: -14px;
+      border-radius: 50%;
+      background: rgba(199, 21, 133, 0.35);
+      animation: teardropPulse 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .pulse-ring-blue {
+      background: rgba(72, 149, 239, 0.4);
+    }
+
+    .pulse-ring-green {
+      background: rgba(34, 197, 94, 0.45);
+    }
+
+    .pulse-ring-red {
+      background: rgba(239, 68, 68, 0.45);
+    }
+
+    /* Route animation & styling matching user image */
+    .leaflet-route-line {
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 3px 6px rgba(65, 105, 225, 0.35));
+    }
+
+    /* Map scale control styling matching vector road theme */
+    .leaflet-control-scale-line {
+      background: rgba(255, 255, 255, 0.9) !important;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 2px solid #64748B !important;
+      border-top: none !important;
+      color: #1E293B !important;
+      font-weight: 800 !important;
+      font-size: 10px !important;
+      line-height: 1.2 !important;
+      padding: 2px 6px !important;
+      border-radius: 0 0 4px 4px !important;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    /* Custom Leaflet Popups */
+    .leaflet-popup-content-wrapper {
+      background: rgba(255, 255, 255, 0.96) !important;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+      border-radius: 18px !important;
+      box-shadow: 0 15px 35px -5px rgba(43, 45, 66, 0.18), 0 5px 15px rgba(0, 0, 0, 0.05) !important;
+      padding: 0 !important;
+      overflow: hidden;
+    }
+
+    .leaflet-popup-content {
+      margin: 0 !important;
+      line-height: 1.4 !important;
+    }
+
+    .leaflet-popup-tip {
+      background: rgba(255, 255, 255, 0.96) !important;
+      box-shadow: 0 5px 15px rgba(43, 45, 66, 0.1) !important;
+    }
+
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F5F2EB;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94A3B8;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col md:flex-row bg-[#F5F2EB]">
+
+  <!-- SKELETON / LOADING OVERLAY -->
+  <div id="loadingOverlay" class="fixed inset-0 z-[9999] bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center transition-opacity duration-300 pointer-events-none opacity-0">
+    <div class="bg-white/95 p-6 rounded-3xl shadow-2xl border border-amber-100 flex flex-col items-center max-w-sm mx-4 text-center">
+      <div class="relative w-16 h-16 mb-4">
+        <div class="absolute inset-0 rounded-full border-4 border-amber-200 border-t-[#C71585] animate-spin"></div>
+        <div class="absolute inset-2 rounded-full border-4 border-blue-100 border-b-[#4895EF] animate-spin" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
+        <div class="absolute inset-0 flex items-center justify-center text-xs font-bold text-slate-700">文/A</div>
+      </div>
+      <h3 class="font-bold text-slate-800 text-lg mb-1" id="loadingTitle">Fetching Geo-Data...</h3>
+      <p class="text-xs text-slate-500" id="loadingSubtitle">Resolving official script & English translations</p>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed top-5 right-5 z-[10000] flex flex-col gap-2.5 max-w-md w-full px-4 pointer-events-none"></div>
+
+  <!-- LEFT SIDEBAR: CONTROLS, FORM & DUAL-LANGUAGE DETAILS -->
+  <aside class="w-full md:w-[420px] lg:w-[460px] h-[45vh] md:h-full z-20 flex flex-col bg-white/95 backdrop-blur-md border-b md:border-b-0 md:border-r border-amber-200/50 shadow-2xl shrink-0 overflow-hidden">
+    
+    <!-- BRAND HEADER -->
+    <header class="p-5 pb-4 border-b border-slate-100 bg-[#F5F2EB]/60">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#C71585] via-[#E76F51] to-[#F4A261] flex items-center justify-center text-white shadow-md shadow-pink-500/20">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-extrabold tracking-tight text-slate-800">TerraLingua</h1>
+              <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">Bilingual</span>
+            </div>
+            <p class="text-xs text-slate-500 font-medium">Pastel Road Map • Local Script & English Labels</p>
+          </div>
+        </div>
+
+        <!-- Info/Palette Modal Toggle -->
+        <button id="togglePaletteBtn" class="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors" title="View Theme Color Specs">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Color Specs Pill Bar (Directly matching prompt specs) -->
+      <div id="paletteSpecsBar" class="mt-3 pt-3 border-t border-amber-200/40 grid grid-cols-5 gap-1.5 text-[10px] text-center font-medium">
+        <div class="p-1 rounded-lg bg-[#F5F2EB] border border-amber-200" title="Pastel Beige Base #F5F2EB">
+          <span class="block w-2.5 h-2.5 rounded-full mx-auto mb-0.5 border" style="background-color: #F5F2EB;"></span>
+          <span class="text-[9px] text-slate-600 truncate block">#F5F2EB</span>
+        </div>
+        <div class="p-1 rounded-lg bg-emerald-50 border border-emerald-200" title="Soft Green Parks #C8E6C9 / #A8D5BA">
+          <span class="block w-2.5 h-2.5 rounded-full mx-auto mb-0.5" style="background-color: #A8D5BA;"></span>
+          <span class="text-[9px] text-emerald-800 truncate block">Parks</span>
+        </div>
+        <div class="p-1 rounded-lg bg-blue-50 border border-blue-200" title="Muted Blue Water #A0C4FF">
+          <span class="block w-2.5 h-2.5 rounded-full mx-auto mb-0.5" style="background-color: #A0C4FF;"></span>
+          <span class="text-[9px] text-blue-800 truncate block">Water</span>
+        </div>
+        <div class="p-1 rounded-lg bg-amber-50 border border-amber-200" title="Orange Main Roads #F4A261">
+          <span class="block w-2.5 h-2.5 rounded-full mx-auto mb-0.5" style="background-color: #F4A261;"></span>
+          <span class="text-[9px] text-amber-800 truncate block">Roads</span>
+        </div>
+        <div class="p-1 rounded-lg bg-slate-50 border border-slate-200" title="Red-Violet / Blue Markers">
+          <div class="flex justify-center gap-0.5 mb-0.5">
+            <span class="w-2.5 h-2.5 rounded-full" style="background-color: #C71585;"></span>
+            <span class="w-2.5 h-2.5 rounded-full" style="background-color: #4895EF;"></span>
+          </div>
+          <span class="text-[9px] text-slate-600 truncate block">Pins</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- NAVIGATION MODE TABS -->
+    <div class="px-5 pt-2.5 pb-0 bg-white/70 border-b border-amber-200/50 flex items-center gap-2 shrink-0">
+      <button 
+        type="button" 
+        id="tabExploreBtn" 
+        class="flex-1 pb-2.5 text-xs font-bold border-b-2 border-[#E76F51] text-[#E76F51] flex items-center justify-center gap-1.5 transition-all"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <span>Explore Places</span>
+      </button>
+
+      <button 
+        type="button" 
+        id="tabRouteBtn" 
+        class="flex-1 pb-2.5 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1.5 transition-all"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+        </svg>
+        <span>🧭 Route Navigation</span>
+        <span class="px-1.5 py-0.5 rounded-full text-[9px] bg-emerald-100 text-emerald-800 font-extrabold border border-emerald-300">LIVE</span>
+      </button>
+    </div>
+
+    <!-- SCROLLABLE INTERACTIVE BODY -->
+    <div class="flex-1 overflow-y-auto p-5 space-y-5">
+
+      <!-- VIEW 1: EXPLORE & BILINGUAL SEARCH -->
+      <div id="exploreView" class="space-y-5">
+        <!-- FORM HANDLING & REAL-TIME VALIDATION (Requirements 3 & 4) -->
+        <form id="searchForm" class="space-y-4" novalidate>
+          
+          <!-- Search Input Field -->
+          <div>
+            <label for="locationInput" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center justify-between">
+              <span>Search Location or Landmark</span>
+              <span id="inputCharCount" class="text-[11px] font-normal text-slate-400">Min 2 chars</span>
+            </label>
+            
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+              </div>
+
+              <input 
+                type="text" 
+                id="locationInput" 
+                name="location" 
+                placeholder="e.g. Tokyo, Mecca, New Delhi, Athens..." 
+                autocomplete="off"
+                required
+                minlength="2"
+                class="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition-all shadow-sm placeholder:text-slate-400"
+              >
+
+              <!-- Clear input button -->
+              <button type="button" id="clearInputBtn" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Real-time inline validation feedback message -->
+            <div id="validationFeedback" class="mt-1.5 text-xs flex items-center gap-1.5 min-h-[18px] transition-all duration-200 text-slate-500">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+              <span>Enter any city, country, or point of interest</span>
+            </div>
+          </div>
+
+          <!-- Filter Row: Region / Country & POI Category -->
+          <div class="grid grid-cols-2 gap-3">
+            
+            <!-- Region Filter -->
+            <div>
+              <label for="regionSelect" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Region / Script</label>
+              <select id="regionSelect" class="w-full py-2 px-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 text-slate-700 font-medium">
+                <option value="all">🌐 All Regions</option>
+                <option value="east-asia">East Asia (Kanji / Hangul)</option>
+                <option value="south-asia">South Asia (Devanagari)</option>
+                <option value="middle-east">Middle East (Arabic)</option>
+                <option value="europe">Europe (Latin / Cyrillic)</option>
+                <option value="americas">Americas</option>
+              </select>
+            </div>
+
+            <!-- POI Category Filter -->
+            <div>
+              <label for="categorySelect" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Category</label>
+              <select id="categorySelect" class="w-full py-2 px-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 text-slate-700 font-medium">
+                <option value="all">📍 All Places</option>
+                <option value="historic">🏛️ Historic & Culture</option>
+                <option value="parks">🌲 Parks & Nature</option>
+                <option value="transit">🚇 Transit & Roads</option>
+                <option value="city">🏙️ Cities & Capitals</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Submit & Locate Actions -->
+          <div class="flex items-center gap-2 pt-1">
+            <button 
+              type="submit" 
+              id="searchSubmitBtn" 
+              disabled
+              class="flex-1 py-2.5 px-4 bg-gradient-to-r from-[#E76F51] to-[#F4A261] hover:from-[#d65f42] hover:to-[#e89450] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl shadow-md shadow-orange-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              <span>Search & Translate</span>
+            </button>
+
+            <button 
+              type="button" 
+              id="currentLocationBtn" 
+              title="Use my current GPS location"
+              class="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors flex items-center justify-center shrink-0"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18.75a6.75 6.75 0 100-13.5 6.75 6.75 0 000 13.5zM12 2v2m0 16v2m10-10h-2M4 12H2"/>
+              </svg>
+            </button>
+          </div>
+        </form>
+
+        <!-- QUICK PRESETS: ICONIC BILINGUAL WORLD LOCATIONS -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-600">Explore Bilingual Presets</span>
+            <span class="text-[10px] text-slate-400">Click to fly</span>
+          </div>
+          <div class="flex flex-wrap gap-1.5" id="presetChipsContainer">
+            <!-- Populated by JavaScript -->
+          </div>
+        </div>
+
+        <!-- ACTIVE LOCATION DUAL-LANGUAGE DETAILS PANEL (Requirement 2 & 5) -->
+        <section id="locationDetailCard" class="bg-gradient-to-br from-white to-[#F5F2EB] rounded-2xl p-4 border border-amber-200/60 shadow-pastel transition-all">
+          <div class="flex items-start justify-between gap-3 mb-2">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span id="badgeScript" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-pink-100 text-[#C71585] border border-pink-200">Japanese (Kanji)</span>
+                <span id="badgeCategory" class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">Metropolis</span>
+              </div>
+              
+              <!-- Primary Local Language Label -->
+              <h2 id="detailPrimaryName" class="text-2xl font-black text-slate-900 tracking-tight mt-1" lang="ja">東京都</h2>
+              
+              <!-- Secondary English Translation -->
+              <div class="flex items-center gap-2 mt-0.5">
+                <span class="text-xs font-extrabold uppercase tracking-wider text-[#E76F51]" id="detailEnglishName">Tokyo (Capital of Japan)</span>
+              </div>
+            </div>
+
+            <button id="speakNameBtn" class="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/60 transition-colors" title="Pronounce Local Name">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Geographic Metadata Details -->
+          <div class="grid grid-cols-2 gap-2 text-xs py-2 my-2 border-y border-amber-200/40 text-slate-600">
+            <div>
+              <span class="text-[10px] uppercase text-slate-400 block font-semibold">Coordinates</span>
+              <span id="detailCoords" class="font-mono text-[11px] font-medium text-slate-700">35.6762° N, 139.6503° E</span>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase text-slate-400 block font-semibold">Administrative Division</span>
+              <span id="detailAdmin" class="font-medium text-slate-700 truncate block">Kantō Region, Japan</span>
+            </div>
+          </div>
+
+          <p id="detailDescription" class="text-xs text-slate-600 leading-relaxed">
+            Japan's vibrant capital, famous for combining ultra-modern skyscrapers with historic temples and tranquil gardens.
+          </p>
+
+          <!-- Action Row -->
+          <div class="mt-3 pt-2 flex items-center gap-2">
+            <button id="copyCoordsBtn" class="flex-1 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+              </svg>
+              <span>Copy GPS</span>
+            </button>
+            
+            <button id="centerMapBtn" class="flex-1 py-1.5 px-3 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              <span>Center View</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- EMPTY STATE BANNER (Requirement 6) -->
+        <div id="emptyStateBanner" class="hidden p-6 rounded-2xl bg-amber-50/80 border border-dashed border-amber-300 text-center">
+          <div class="w-12 h-12 mx-auto rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mb-2">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <h4 class="font-bold text-slate-800 text-sm">No Location Found</h4>
+          <p class="text-xs text-slate-500 mt-1">We couldn't locate that query on OpenStreetMap. Try checking for typos or click one of the quick presets above.</p>
+        </div>
+      </div>
+
+      <!-- VIEW 2: ROUTE NAVIGATION & DIRECTIONS (MATCHING USER REFERENCE IMAGE) -->
+      <div id="navigationView" class="space-y-4 hidden">
+        
+        <!-- Header Banner -->
+        <div class="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <h3 class="text-xs font-black uppercase tracking-wider text-emerald-900">Vector Road Navigator</h3>
+          </div>
+          <p class="text-[11px] text-emerald-700 mt-0.5 font-medium leading-relaxed">
+            Trace routes with <span class="font-bold text-emerald-800">Green Start Pin ➔ Red Finish Pin</span> and bilingual corridor waypoints.
+          </p>
+        </div>
+
+        <!-- ROUTE PLANNING FORM -->
+        <form id="routeForm" class="space-y-3" novalidate>
+          
+          <!-- Origin (Start Point A) -->
+          <div>
+            <label for="routeOriginInput" class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center justify-between">
+              <span class="flex items-center gap-1.5">
+                <span class="w-3 h-3 rounded-full bg-emerald-500 border border-white shadow-sm inline-block"></span>
+                <span>Starting Point (Origin A)</span>
+              </span>
+              <button type="button" id="useOriginGpsBtn" class="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-0.5">
+                <span>📍 My GPS</span>
+              </button>
+            </label>
+            <div class="relative">
+              <input 
+                type="text" 
+                id="routeOriginInput" 
+                placeholder="e.g. Bengaluru, Coimbatore, Mumbai..."
+                value="Bengaluru" 
+                required
+                class="w-full pl-9 pr-9 py-2 text-xs bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 font-medium"
+              >
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-emerald-600 font-bold text-xs">A</div>
+              <button type="button" id="clearOriginBtn" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+          </div>
+
+          <!-- Swap Origin / Destination Button -->
+          <div class="flex items-center justify-center -my-1">
+            <button 
+              type="button" 
+              id="swapRouteBtn" 
+              title="Swap Origin & Destination"
+              class="p-1.5 rounded-full bg-white hover:bg-slate-100 border border-slate-200 shadow-sm text-slate-500 hover:text-slate-800 transition-transform active:rotate-180 duration-300"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Destination (Finish Point B) -->
+          <div>
+            <label for="routeDestInput" class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1 flex items-center justify-between">
+              <span class="flex items-center gap-1.5">
+                <span class="w-3 h-3 rounded-full bg-rose-500 border border-white shadow-sm inline-block"></span>
+                <span>Destination (Finish B)</span>
+              </span>
+            </label>
+            <div class="relative">
+              <input 
+                type="text" 
+                id="routeDestInput" 
+                placeholder="e.g. Chennai, Pune, Delhi..."
+                value="Chennai" 
+                required
+                class="w-full pl-9 pr-9 py-2 text-xs bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400 font-medium"
+              >
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-rose-600 font-bold text-xs">B</div>
+              <button type="button" id="clearDestBtn" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+          </div>
+
+          <!-- Route Action Buttons -->
+          <div class="pt-1 flex items-center gap-2">
+            <button 
+              type="submit" 
+              id="calculateRouteSubmitBtn" 
+              class="flex-1 py-2.5 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+              <span>Navigate & Trace Route</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- QUICK ROUTE PRESETS (FEATURING BENGALURU ⇄ CHENNAI FROM USER IMAGE) -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600">Popular Corridors</span>
+            <span class="text-[10px] text-emerald-700 font-semibold">1-Click Route</span>
+          </div>
+
+          <div class="grid grid-cols-1 gap-1.5">
+            <!-- FEATURED MATCH: Bengaluru ⇄ Chennai -->
+            <button 
+              type="button" 
+              id="presetRouteBlrChe" 
+              class="p-2.5 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border-2 border-emerald-400/80 hover:border-emerald-500 text-left transition-all shadow-sm active:scale-[0.99] flex items-center justify-between group"
+            >
+              <div class="flex items-center gap-2">
+                <div class="flex items-center -space-x-1">
+                  <span class="w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center text-[8px] text-white font-black">A</span>
+                  <span class="w-3.5 h-3.5 rounded-full bg-rose-500 flex items-center justify-center text-[8px] text-white font-black">B</span>
+                </div>
+                <div>
+                  <div class="text-xs font-extrabold text-slate-900 group-hover:text-emerald-800 transition-colors">
+                    ಬೆಂಗಳೂರು (Bengaluru) ⇄ சென்னை (Chennai)
+                  </div>
+                  <div class="text-[10px] text-slate-500 font-medium">Via NH 75 • Kolar • Chittoor • NH 48 (Exact Reference)</div>
+                </div>
+              </div>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-600 text-white shrink-0">Trace</span>
+            </button>
+
+            <!-- Other quick corridors -->
+            <div class="grid grid-cols-2 gap-1.5 text-left">
+              <button 
+                type="button" 
+                class="preset-quick-route p-2 rounded-xl bg-white border border-slate-200 hover:border-amber-400 text-left transition-all shadow-sm text-xs font-medium"
+                data-origin="Mumbai" 
+                data-dest="Pune"
+              >
+                <span class="font-bold text-slate-800 block truncate">मुंबई ⇄ पुणे</span>
+                <span class="text-[10px] text-slate-400 block truncate">Mumbai ⇄ Pune (Exp)</span>
+              </button>
+
+              <button 
+                type="button" 
+                class="preset-quick-route p-2 rounded-xl bg-white border border-slate-200 hover:border-amber-400 text-left transition-all shadow-sm text-xs font-medium"
+                data-origin="Coimbatore" 
+                data-dest="Bengaluru"
+              >
+                <span class="font-bold text-slate-800 block truncate">கோவை ⇄ ಬೆಂಗಳೂರು</span>
+                <span class="text-[10px] text-slate-400 block truncate">Coimbatore ⇄ Blr</span>
+              </button>
+
+              <button 
+                type="button" 
+                class="preset-quick-route p-2 rounded-xl bg-white border border-slate-200 hover:border-amber-400 text-left transition-all shadow-sm text-xs font-medium"
+                data-origin="New Delhi" 
+                data-dest="Agra"
+              >
+                <span class="font-bold text-slate-800 block truncate">नई दिल्ली ⇄ आगरा</span>
+                <span class="text-[10px] text-slate-400 block truncate">Delhi ⇄ Agra (Exp)</span>
+              </button>
+
+              <button 
+                type="button" 
+                class="preset-quick-route p-2 rounded-xl bg-white border border-slate-200 hover:border-amber-400 text-left transition-all shadow-sm text-xs font-medium"
+                data-origin="Tokyo" 
+                data-dest="Yokohama"
+              >
+                <span class="font-bold text-slate-800 block truncate">東京都 ⇄ 横浜市</span>
+                <span class="text-[10px] text-slate-400 block truncate">Tokyo ⇄ Yokohama</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTIVE ROUTE SUMMARY CARD -->
+        <div id="routeSummaryCard" class="hidden p-4 rounded-2xl bg-gradient-to-br from-white to-slate-50 border border-slate-200/90 shadow-pastel transition-all">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">Active Navigation Route</span>
+            <span class="text-[10px] font-mono text-slate-400" id="routeSourceEngine">OSRM Engine</span>
+          </div>
+
+          <!-- Route Origin & Destination Nodes -->
+          <div class="space-y-1.5 py-2 border-y border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center text-[9px] text-white font-black">A</span>
+              <div class="flex-1 truncate">
+                <span class="text-xs font-extrabold text-slate-900" id="routeStartTitle">Bengaluru</span>
+                <span class="text-[10px] text-slate-400 ml-1" id="routeStartSub">Origin Point</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <span class="w-3.5 h-3.5 rounded-full bg-rose-500 flex items-center justify-center text-[9px] text-white font-black">B</span>
+              <div class="flex-1 truncate">
+                <span class="text-xs font-extrabold text-slate-900" id="routeEndTitle">Chennai</span>
+                <span class="text-[10px] text-slate-400 ml-1" id="routeEndSub">Destination Point</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Route Metrics Bar (Distance & Duration) -->
+          <div class="grid grid-cols-2 gap-2 text-center py-2.5 my-1 bg-amber-50/50 rounded-xl border border-amber-200/50">
+            <div>
+              <span class="text-[9px] uppercase font-bold text-slate-400 block">Total Distance</span>
+              <span class="text-base font-black text-slate-900" id="routeDistanceVal">326.1 km</span>
+            </div>
+            <div>
+              <span class="text-[9px] uppercase font-bold text-slate-400 block">Est. Driving Time</span>
+              <span class="text-base font-black text-emerald-700" id="routeDurationVal">4 hr 45 min</span>
+            </div>
+          </div>
+
+          <div class="text-[11px] text-slate-600 mt-1" id="routeCorridorNote">
+            🛣️ Traced along arterial highway corridors with dual-language waypoints.
+          </div>
+
+          <!-- Route Quick Action Buttons -->
+          <div class="mt-3 pt-2 border-t border-slate-100 flex items-center gap-2">
+            <button type="button" id="focusRouteBtn" class="flex-1 py-1.5 px-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1">
+              <span>🔍 Fit Route</span>
+            </button>
+            <button type="button" id="clearRouteBtn" class="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1">
+              <span>✕ Clear</span>
+            </button>
+          </div>
+
+          <!-- Expandable Turn-by-Turn Guidance -->
+          <div class="mt-3 pt-2 border-t border-slate-100">
+            <button type="button" id="toggleStepsBtn" class="w-full flex items-center justify-between text-xs font-bold text-slate-700 hover:text-slate-900">
+              <span>Turn-by-Turn Guidance (<span id="stepsCount">4</span> steps)</span>
+              <span id="stepsToggleArrow">▼</span>
+            </button>
+            <div id="stepsContainer" class="mt-2 space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- SIDEBAR FOOTER / TELEMETRY STATUS -->
+    <footer class="p-3 bg-slate-50 border-t border-slate-200/80 text-[11px] text-slate-500 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span id="telemetryStatus">Map Engine Ready</span>
+      </div>
+      <div class="font-mono text-[10px] text-slate-400" id="telemetryCoords">
+        Zoom: 12 | 35.676, 139.650
+      </div>
+    </footer>
+  </aside>
+
+  <!-- RIGHT MAIN MAP CONTAINER -->
+  <main class="flex-1 relative h-[55vh] md:h-full w-full bg-[#F5F2EB]">
+    
+    <!-- LEAFLET MAP ELEMENT -->
+    <div id="map" class="w-full h-full z-10"></div>
+
+    <!-- FLOATING TOP CONTROLS -->
+    <div class="absolute top-4 right-4 z-20 flex flex-col items-end gap-2 pointer-events-none">
+      
+      <div class="pointer-events-auto flex items-center gap-2">
+        <!-- Route Navigation Toggle Button -->
+        <button id="toggleRouteNavFloatingBtn" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-3.5 py-1.5 rounded-2xl shadow-pastel text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm" title="Open Route Navigation Planner">
+          <span>🧭 Directions</span>
+        </button>
+
+        <!-- Scan All Streets Button -->
+        <button id="scanStreetsBtn" class="bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-2xl shadow-pastel border border-amber-300 text-xs font-bold text-amber-900 hover:bg-amber-100 transition-all flex items-center gap-1.5 active:scale-95 shadow-sm" title="Scan and render bilingual streets for the visible area">
+          <span>🛣️ Scan All Streets</span>
+        </button>
+
+        <!-- Interactive Map Style Pill Switcher -->
+        <div class="bg-white/90 backdrop-blur-md p-1.5 rounded-2xl shadow-pastel border border-amber-200/60 flex items-center gap-1">
+          <button id="stylePastelRoad" class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-amber-100 text-amber-900 border border-amber-300">
+            🎨 Pastel Vector Road
+          </button>
+          <button id="styleWarmPastel" class="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all">
+            🌅 Warm Pastel
+          </button>
+          <button id="styleCleanMinimal" class="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all">
+            📐 Minimal Crisp
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Instruction Banner -->
+      <div class="pointer-events-auto bg-white/85 backdrop-blur-md px-3.5 py-2 rounded-xl shadow-md border border-slate-200/70 text-xs text-slate-600 flex items-center gap-2 hidden sm:flex">
+        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span>Route Navigation: <strong>Green Origin ➔ Red Destination</strong></span>
+      </div>
+    </div>
+
+    <!-- FLOATING MAP LEGEND (SPEC COMPLIANCE) -->
+    <div class="absolute bottom-12 left-4 z-20 pointer-events-auto bg-white/95 backdrop-blur-md p-3.5 rounded-2xl shadow-pastel border border-amber-200/60 max-w-xs hidden sm:block">
+      <div class="text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-2 flex items-center justify-between">
+        <span>Map Visual Palette</span>
+        <span class="text-[9px] text-slate-400 font-normal">Vector Road Theme</span>
+      </div>
+      <div class="space-y-1.5 text-xs text-slate-600">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-md border border-slate-300" style="background-color: #F5F2EB;"></span>
+            <span>Land & Base</span>
+          </div>
+          <span class="font-mono text-[10px] text-slate-400">#F5F2EB</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-md" style="background-color: #A8D5BA;"></span>
+            <span>Parks & Greenery</span>
+          </div>
+          <span class="font-mono text-[10px] text-slate-400">#C8E6C9 / #A8D5BA</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-md" style="background-color: #A0C4FF;"></span>
+            <span>Water Bodies</span>
+          </div>
+          <span class="font-mono text-[10px] text-slate-400">#A0C4FF</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-md" style="background-color: #F4A261;"></span>
+            <span>Main Roads / Arteries</span>
+          </div>
+          <span class="font-mono text-[10px] text-slate-400">#F4A261 / #E76F51</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-md" style="background-color: #8D99AE;"></span>
+            <span>Secondary Roads</span>
+          </div>
+          <span class="font-mono text-[10px] text-slate-400">#8D99AE</span>
+        </div>
+        <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-full" style="background-color: #C71585;"></span>
+            <span>Primary Marker</span>
+          </div>
+          <span class="text-[10px] text-pink-700 font-semibold">Red-Violet + Green</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-3.5 h-3.5 rounded-full" style="background-color: #4895EF;"></span>
+            <span>Secondary Marker</span>
+          </div>
+          <span class="text-[10px] text-blue-700 font-semibold">Soft Blue + Sky</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    /**
+     * TerraLingua Application Engine
+     * Front-End Web Application demonstrating:
+     * 1. Pastel Vector Road Map Theme & Custom DivIcon Teardrop Markers
+     * 2. Dual-Language / Bilingual Map Labels (Official Local Script & English)
+     * 3. Form Handling & Real-time Validation Feedback
+     * 4. Asynchronous Fetch API & JSON Data Handling with Nominatim / Overpass
+     * 5. Interactive Event Listeners (submit, input/change, click/moveend)
+     * 6. Error Handling, Toast Notifications, Loading States & Empty States
+     */
+
+    // --- 1. GLOBAL STATE & PRESET DATA ---
+    const appState = {
+      map: null,
+      activeTileLayer: null,
+      activeMarkers: [],
+      streetMarkers: [],
+      currentTileStyle: 'pastel-tiles',
+      lastSearchQuery: '',
+      activeLocation: null,
+      isFetching: false,
+      // Route Navigation Engine State
+      activeTab: 'explore', // 'explore' or 'route'
+      routeGlowLayer: null,
+      routePolylineLayer: null,
+      routeStartMarker: null,
+      routeDestMarker: null,
+      routeWaypointMarkers: [],
+      activeRoute: null
+    };
+
+    // Iconic Bilingual World & Indian Regional Presets with full dual-language local scripts, English translations, and arterial street networks
+    const BILINGUAL_PRESETS = [
+      {
+        id: 'coimbatore',
+        nameEn: 'Coimbatore',
+        nameLocal: 'கோயம்புத்தூர்',
+        script: 'Tamil (தமிழ்)',
+        region: 'south-asia',
+        category: 'city',
+        lat: 11.0168,
+        lng: 76.9558,
+        zoom: 13,
+        admin: 'Tamil Nadu, India',
+        pinType: 'redViolet',
+        desc: "Major industrial city known as the 'Manchester of South India', nestled in the rain shadow of the Western Ghats.",
+        streets: [
+          { nameLocal: 'அவினாசி சாலை', nameEn: 'Avinashi Road (NH 544)', lat: 11.0265, lng: 76.9920, isHighway: true },
+          { nameLocal: 'திருச்சி சாலை', nameEn: 'Trichy Road (SH 172)', lat: 11.0020, lng: 76.9850, isHighway: true },
+          { nameLocal: 'மேட்டுப்பாளையம் சாலை', nameEn: 'Mettupalayam Road (NH 181)', lat: 11.0360, lng: 76.9490, isHighway: true },
+          { nameLocal: 'சத்தியமங்கலம் சாலை', nameEn: 'Sathy Road', lat: 11.0320, lng: 76.9740, isHighway: true },
+          { nameLocal: 'காந்திபுரம்', nameEn: 'Gandhipuram Central', lat: 11.0175, lng: 76.9680, isHighway: false },
+          { nameLocal: 'டி.பி. சாலை', nameEn: 'D.B. Road, R.S. Puram', lat: 11.0110, lng: 76.9480, isHighway: false },
+          { nameLocal: 'ரேஸ் கோர்ஸ் சாலை', nameEn: 'Race Course Promenade', lat: 11.0060, lng: 76.9720, isHighway: false },
+          { nameLocal: 'வ.உ.சி பூங்கா', nameEn: 'VOC Park & Grounds', lat: 11.0135, lng: 76.9695, isHighway: false },
+          { nameLocal: 'உக்கடம் பேரூர் சாலை', nameEn: 'Perur Main Rd, Ukkadam', lat: 10.9910, lng: 76.9580, isHighway: false }
+        ]
+      },
+      {
+        id: 'bengaluru',
+        nameEn: 'Bengaluru',
+        nameLocal: 'ಬೆಂಗಳೂರು',
+        script: 'Kannada (ಕನ್ನಡ)',
+        region: 'south-asia',
+        category: 'city',
+        lat: 12.9716,
+        lng: 77.5946,
+        zoom: 13,
+        admin: 'Karnataka, India',
+        pinType: 'redViolet',
+        desc: "The Silicon Valley of India, celebrated for world-class IT parks, serene public gardens, and lively dining culture.",
+        streets: [
+          { nameLocal: 'ಎಂ.ಜಿ. ರಸ್ತೆ', nameEn: 'Mahatma Gandhi Road', lat: 12.9756, lng: 77.6066, isHighway: true },
+          { nameLocal: 'ಬ್ರಿಗೇಡ್ ರಸ್ತೆ', nameEn: 'Brigade Road', lat: 12.9720, lng: 77.6080, isHighway: false },
+          { nameLocal: 'ಕಬ್ಬನ್ ಪಾರ್ಕ್', nameEn: 'Cubbon Park Kasturba Rd', lat: 12.9760, lng: 77.5920, isHighway: false },
+          { nameLocal: 'ಇಂದಿರಾನಗರ 100 ಅಡಿ ರಸ್ತೆ', nameEn: '100 Feet Rd, Indiranagar', lat: 12.9719, lng: 77.6412, isHighway: true }
+        ]
+      },
+      {
+        id: 'chennai',
+        nameEn: 'Chennai',
+        nameLocal: 'சென்னை',
+        script: 'Tamil (தமிழ்)',
+        region: 'south-asia',
+        category: 'city',
+        lat: 13.0827,
+        lng: 80.2707,
+        zoom: 13,
+        admin: 'Tamil Nadu, India',
+        pinType: 'softBlue',
+        desc: "Capital of Tamil Nadu, renowned for ancient Dravidian temple architecture, classical Carnatic music, and Marina Beach.",
+        streets: [
+          { nameLocal: 'அண்ணா சாலை', nameEn: 'Anna Salai (Mount Road)', lat: 13.0600, lng: 80.2600, isHighway: true },
+          { nameLocal: 'காமராஜர் சாலை', nameEn: 'Kamarajar Salai (Marina)', lat: 13.0480, lng: 80.2820, isHighway: true },
+          { nameLocal: 'பூந்தமல்லி நெடுஞ்சாலை', nameEn: 'Poonamallee High Road', lat: 13.0780, lng: 80.2520, isHighway: true }
+        ]
+      },
+      {
+        id: 'mumbai',
+        nameEn: 'Mumbai',
+        nameLocal: 'मुंबई',
+        script: 'Devanagari (मराठी)',
+        region: 'south-asia',
+        category: 'city',
+        lat: 19.0760,
+        lng: 72.8777,
+        zoom: 13,
+        admin: 'Maharashtra, India',
+        pinType: 'redViolet',
+        desc: "India's financial capital and the vibrant home of Bollywood cinema along the historic Arabian Sea coastline.",
+        streets: [
+          { nameLocal: 'मरीन ड्राईव्ह', nameEn: 'Marine Drive (Netaji Rd)', lat: 18.9430, lng: 72.8230, isHighway: true },
+          { nameLocal: 'दादर टी.टी. सर्कल', nameEn: 'Dadar T.T. Circle', lat: 19.0178, lng: 72.8478, isHighway: false },
+          { nameLocal: 'वांद्रे-वरळी सी लिंक', nameEn: 'Bandra-Worli Sea Link', lat: 19.0360, lng: 72.8170, isHighway: true }
+        ]
+      },
+      {
+        id: 'tokyo',
+        nameEn: 'Tokyo',
+        nameLocal: '東京都',
+        script: 'Japanese (Kanji)',
+        region: 'east-asia',
+        category: 'city',
+        lat: 35.6762,
+        lng: 139.6503,
+        zoom: 13,
+        admin: 'Kantō, Japan',
+        pinType: 'redViolet',
+        desc: "Japan's capital combines ultra-modern neon-lit streets with centuries-old Shinto shrines and historic gardens.",
+        streets: [
+          { nameLocal: '明治通り', nameEn: 'Meiji-dori Avenue', lat: 35.6680, lng: 139.7040, isHighway: true },
+          { nameLocal: '銀座中央通り', nameEn: 'Ginza Chuo-dori', lat: 35.6710, lng: 139.7650, isHighway: true },
+          { nameLocal: '表参道', nameEn: 'Omotesando Boulevard', lat: 35.6660, lng: 139.7100, isHighway: false },
+          { nameLocal: '外堀通り', nameEn: 'Sotobori-dori Ring', lat: 35.6810, lng: 139.7680, isHighway: true }
+        ]
+      },
+      {
+        id: 'mecca',
+        nameEn: 'Mecca',
+        nameLocal: 'مكة المكرمة',
+        script: 'Arabic (العربية)',
+        region: 'middle-east',
+        category: 'historic',
+        lat: 21.4225,
+        lng: 39.8262,
+        zoom: 14,
+        admin: 'Makkah Province, Saudi Arabia',
+        pinType: 'softBlue',
+        desc: "The holiest city in Islam, birthplace of Prophet Muhammad and destination of the annual Hajj pilgrimage.",
+        streets: [
+          { nameLocal: 'طريق إبراهيم الخلیل', nameEn: 'Ibrahim Al Khalil Rd', lat: 21.4180, lng: 39.8220, isHighway: true },
+          { nameLocal: 'طريق المسجد الحرام', nameEn: 'Al Masjid Al Haram Rd', lat: 21.4280, lng: 39.8320, isHighway: true },
+          { nameLocal: 'طريق أم القرى', nameEn: 'Umm Al Qura Rd', lat: 21.4250, lng: 39.8150, isHighway: true }
+        ]
+      },
+      {
+        id: 'newdelhi',
+        nameEn: 'New Delhi',
+        nameLocal: 'नई दिल्ली',
+        script: 'Devanagari (हिन्दी)',
+        region: 'south-asia',
+        category: 'city',
+        lat: 28.6139,
+        lng: 77.2090,
+        zoom: 13,
+        admin: 'National Capital Territory, India',
+        pinType: 'redViolet',
+        desc: "India's capital city, showcasing historic Mughal architecture like Humayun's Tomb alongside grand boulevard monuments.",
+        streets: [
+          { nameLocal: 'कर्तव्य पथ', nameEn: 'Kartavya Path (Rajpath)', lat: 28.6140, lng: 77.2090, isHighway: true },
+          { nameLocal: 'जनपथ', nameEn: 'Janpath Boulevard', lat: 28.6210, lng: 77.2180, isHighway: true },
+          { nameLocal: 'कनॉट सर्कस', nameEn: 'Connaught Circus', lat: 28.6315, lng: 77.2195, isHighway: false },
+          { nameLocal: 'शांति पथ', nameEn: 'Shanti Path Avenue', lat: 28.5950, lng: 77.1900, isHighway: true }
+        ]
+      },
+      {
+        id: 'athens',
+        nameEn: 'Athens',
+        nameLocal: 'Αθήνα',
+        script: 'Greek (Ελληνικά)',
+        region: 'europe',
+        category: 'historic',
+        lat: 37.9838,
+        lng: 23.7275,
+        zoom: 14,
+        admin: 'Attica, Greece',
+        pinType: 'softBlue',
+        desc: "The historic cradle of Western civilization and democracy, crowned by the 5th-century BC Acropolis citadel.",
+        streets: [
+          { nameLocal: 'Λεωφόρος Βασιλίσσης Σοφίας', nameEn: 'Vasilissis Sofias Ave', lat: 37.9780, lng: 23.7420, isHighway: true },
+          { nameLocal: 'Οδός Ερμού', nameEn: 'Ermou Street', lat: 37.9760, lng: 23.7290, isHighway: false },
+          { nameLocal: 'Διονυσίου Αρεοπαγίτου', nameEn: 'Dionysiou Areopagitou Promenade', lat: 37.9690, lng: 23.7280, isHighway: false }
+        ]
+      },
+      {
+        id: 'cairo',
+        nameEn: 'Cairo',
+        nameLocal: 'القاهرة',
+        script: 'Arabic (العربية)',
+        region: 'middle-east',
+        category: 'historic',
+        lat: 30.0444,
+        lng: 31.2357,
+        zoom: 13,
+        admin: 'Cairo Governorate, Egypt',
+        pinType: 'redViolet',
+        desc: "Egypt's sprawling capital along the Nile, famed for historic Islamic architecture and the nearby Giza Pyramids.",
+        streets: [
+          { nameLocal: 'شارع المعز لدين الله', nameEn: 'Al-Muizz li-Din Allah St', lat: 30.0520, lng: 31.2610, isHighway: false },
+          { nameLocal: 'طريق النيل (كورنيش)', nameEn: 'Nile Corniche Highway', lat: 30.0430, lng: 31.2290, isHighway: true },
+          { nameLocal: 'ميدان التحرير', nameEn: 'Tahrir Square Hub', lat: 30.0444, lng: 31.2357, isHighway: true }
+        ]
+      },
+      {
+        id: 'moscow',
+        nameEn: 'Moscow',
+        nameLocal: 'Москва',
+        script: 'Cyrillic (Русский)',
+        region: 'europe',
+        category: 'city',
+        lat: 55.7558,
+        lng: 37.6173,
+        zoom: 13,
+        admin: 'Central Federal District, Russia',
+        pinType: 'softBlue',
+        desc: "The historic Russian capital centered around the Kremlin complex and the kaleidoscopic Saint Basil's Cathedral.",
+        streets: [
+          { nameLocal: 'Тверская улица', nameEn: 'Tverskaya Street', lat: 55.7590, lng: 37.6110, isHighway: true },
+          { nameLocal: 'Садовое кольцо', nameEn: 'Garden Ring Highway', lat: 55.7700, lng: 37.6200, isHighway: true },
+          { nameLocal: 'Улица Арбат', nameEn: 'Arbat Pedestrian Street', lat: 55.7500, lng: 37.5920, isHighway: false }
+        ]
+      },
+      {
+        id: 'seoul',
+        nameEn: 'Seoul',
+        nameLocal: '서울특별시',
+        script: 'Hangul (한국어)',
+        region: 'east-asia',
+        category: 'city',
+        lat: 37.5665,
+        lng: 126.9780,
+        zoom: 13,
+        admin: 'Sudogwon, South Korea',
+        pinType: 'redViolet',
+        desc: "A high-tech metropolis where cutting-edge skyscrapers tower above tranquil Buddhist temples and Gyeongbokgung Palace.",
+        streets: [
+          { nameLocal: '세종대로', nameEn: 'Sejong-daero Boulevard', lat: 37.5720, lng: 126.9768, isHighway: true },
+          { nameLocal: '종로', nameEn: 'Jong-ro Avenue', lat: 37.5700, lng: 126.9920, isHighway: true },
+          { nameLocal: '테헤란로', nameEn: 'Teheran-ro (Gangnam)', lat: 37.5030, lng: 127.0450, isHighway: true }
+        ]
+      },
+      {
+        id: 'paris',
+        nameEn: 'Paris',
+        nameLocal: 'Paris',
+        script: 'French (Français)',
+        region: 'europe',
+        category: 'city',
+        lat: 48.8566,
+        lng: 2.3522,
+        zoom: 13,
+        admin: 'Île-de-France, France',
+        pinType: 'softBlue',
+        desc: "The City of Light, world capital of art, fashion, gastronomy, and architectural icons like the Eiffel Tower and Louvre.",
+        streets: [
+          { nameLocal: 'Avenue des Champs-Élysées', nameEn: 'Champs-Élysées Avenue', lat: 48.8698, lng: 2.3075, isHighway: true },
+          { nameLocal: 'Boulevard Saint-Germain', nameEn: 'Saint-Germain Boulevard', lat: 48.8530, lng: 2.3330, isHighway: true },
+          { nameLocal: 'Rue de Rivoli', nameEn: 'Rue de Rivoli', lat: 48.8560, lng: 2.3530, isHighway: false }
+        ]
+      }
+    ];
+
+    // --- 2. CUSTOM LEAFLET TEARDROP MARKER CREATOR (Requirement 1) ---
+    /**
+     * Creates custom teardrop pins matching exact specifications:
+     * - Teardrop 1: Bright Red-Violet marker (#C71585) with light green inner circle (#A8D5BA / #C8E6C9)
+     * - Teardrop 2: Soft Blue marker (#4895EF) with light blue inner circle (#E0F2FE)
+     */
+    function createTeardropIcon(type = 'redViolet', size = 38) {
+      if (type === 'greenStart') {
+        const svgIcon = `
+          <div class="relative flex items-center justify-center" style="width: ${size}px; height: ${size * 1.3}px;">
+            <div class="pulse-ring pulse-ring-green"></div>
+            <svg viewBox="0 0 36 48" width="${size}" height="${size * 1.33}" class="drop-shadow-md transition-transform duration-200 hover:scale-110 cursor-pointer">
+              <defs>
+                <linearGradient id="grad-greenStart" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#4ade80" />
+                  <stop offset="55%" stop-color="#22c55e" />
+                  <stop offset="100%" stop-color="#15803d" />
+                </linearGradient>
+                <filter id="shadow-greenStart" x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="#000" flood-opacity="0.3"/>
+                </filter>
+              </defs>
+              <!-- Green Teardrop Pin Body -->
+              <path d="M18 1 C8.6 1 1 8.6 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 8.6 27.4 1 18 1 Z" 
+                    fill="url(#grad-greenStart)" 
+                    stroke="#FFFFFF" 
+                    stroke-width="2.4" 
+                    stroke-linejoin="round"
+                    filter="url(#shadow-greenStart)"/>
+              <!-- Green Inner Disc -->
+              <circle cx="18" cy="18" r="8" fill="#16a34a" stroke="#FFFFFF" stroke-width="1.2" />
+              <!-- White Directional Navigation Arrow (matching reference image) -->
+              <g transform="translate(18, 18) rotate(32) scale(0.68)">
+                <path d="M0 -12 L7 8 L0 4 L-7 8 Z" fill="#FFFFFF" />
+              </g>
+            </svg>
+          </div>
+        `;
+        return L.divIcon({
+          className: 'custom-teardrop-marker',
+          html: svgIcon,
+          iconSize: [size, size * 1.33],
+          iconAnchor: [size / 2, size * 1.33],
+          popupAnchor: [0, -(size * 1.3)]
+        });
+      }
+
+      if (type === 'redFinish') {
+        const svgIcon = `
+          <div class="relative flex items-center justify-center" style="width: ${size}px; height: ${size * 1.3}px;">
+            <div class="pulse-ring pulse-ring-red"></div>
+            <svg viewBox="0 0 36 48" width="${size}" height="${size * 1.33}" class="drop-shadow-md transition-transform duration-200 hover:scale-110 cursor-pointer">
+              <defs>
+                <linearGradient id="grad-redFinish" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#f87171" />
+                  <stop offset="55%" stop-color="#ef4444" />
+                  <stop offset="100%" stop-color="#b91c1c" />
+                </linearGradient>
+                <filter id="shadow-redFinish" x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="#000" flood-opacity="0.3"/>
+                </filter>
+              </defs>
+              <!-- Red Teardrop Pin Body -->
+              <path d="M18 1 C8.6 1 1 8.6 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 8.6 27.4 1 18 1 Z" 
+                    fill="url(#grad-redFinish)" 
+                    stroke="#FFFFFF" 
+                    stroke-width="2.4" 
+                    stroke-linejoin="round"
+                    filter="url(#shadow-redFinish)"/>
+              <!-- Red Inner Disc -->
+              <circle cx="18" cy="18" r="8" fill="#b91c1c" stroke="#FFFFFF" stroke-width="1.2" />
+              <!-- White Destination Flag (matching reference image) -->
+              <g transform="translate(18, 18) scale(0.68)">
+                <path d="M-5 -9 L5 -5.5 L-5 -2 Z" fill="#FFFFFF" />
+                <path d="M-5 -9 L-5 9" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" />
+              </g>
+            </svg>
+          </div>
+        `;
+        return L.divIcon({
+          className: 'custom-teardrop-marker',
+          html: svgIcon,
+          iconSize: [size, size * 1.33],
+          iconAnchor: [size / 2, size * 1.33],
+          popupAnchor: [0, -(size * 1.3)]
+        });
+      }
+
+      const isRedViolet = type === 'redViolet';
+      const mainColor = isRedViolet ? '#C71585' : '#4895EF';
+      const innerColor = isRedViolet ? '#A8D5BA' : '#E0F2FE';
+      const pulseClass = isRedViolet ? 'pulse-ring' : 'pulse-ring pulse-ring-blue';
+
+      // SVG teardrop with clean drop-shadow and vibrant inner circle
+      const svgIcon = `
+        <div class="relative flex items-center justify-center" style="width: ${size}px; height: ${size * 1.3}px;">
+          <div class="${pulseClass}"></div>
+          <svg viewBox="0 0 36 48" width="${size}" height="${size * 1.33}" class="drop-shadow-md transition-transform duration-200 hover:scale-110 cursor-pointer">
+            <defs>
+              <linearGradient id="grad-${type}" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="${isRedViolet ? '#E76F51' : '#4EA8DE'}" />
+                <stop offset="60%" stop-color="${mainColor}" />
+                <stop offset="100%" stop-color="${isRedViolet ? '#9C27B0' : '#3A0CA3'}" />
+              </linearGradient>
+              <filter id="shadow-${type}" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="#000" flood-opacity="0.25"/>
+              </filter>
+            </defs>
+            <!-- Teardrop Pin Body -->
+            <path d="M18 1 C8.6 1 1 8.6 1 18 C1 28 18 47 18 47 C18 47 35 28 35 18 C35 8.6 27.4 1 18 1 Z" 
+                  fill="url(#grad-${type})" 
+                  stroke="#FFFFFF" 
+                  stroke-width="2.2" 
+                  stroke-linejoin="round"
+                  filter="url(#shadow-${type})"/>
+            <!-- Contrasting Inner Circle -->
+            <circle cx="18" cy="18" r="6.5" fill="${innerColor}" stroke="#FFFFFF" stroke-width="1.5" />
+          </svg>
+        </div>
+      `;
+
+      return L.divIcon({
+        className: 'custom-teardrop-marker',
+        html: svgIcon,
+        iconSize: [size, size * 1.33],
+        iconAnchor: [size / 2, size * 1.33],
+        popupAnchor: [0, -(size * 1.3)]
+      });
+    }
+
+    // --- 3. DUAL-LANGUAGE STRING PARSER (Requirement 2) ---
+    /**
+     * Extracts Primary Official Local Script and English translation from OpenStreetMap payload
+     */
+    function parseDualLanguageNames(placeData, userQuery = '') {
+      let localName = '';
+      let englishName = '';
+      let detectedScript = 'Standard Script';
+
+      const namedetails = placeData.namedetails || placeData.tags || {};
+      const address = placeData.address || {};
+      const rawName = placeData.name || placeData.display_name?.split(',')[0] || userQuery;
+
+      // 1. Resolve English Name
+      if (namedetails['name:en']) {
+        englishName = namedetails['name:en'];
+      } else if (namedetails['int_name']) {
+        englishName = namedetails['int_name'];
+      } else if (address.country_code === 'us' || address.country_code === 'gb' || address.country_code === 'au') {
+        englishName = rawName;
+      }
+
+      // Check if placeData is a street / road and translate common road terms if English tag is absent
+      if (!englishName && rawName) {
+        let translit = rawName;
+        // Tamil road terms
+        if (translit.includes('நெடுஞ்சாலை')) translit = translit.replace(/நெடுஞ்சாலை/g, ' Highway');
+        else if (translit.includes('சாலை')) translit = translit.replace(/சாலை/g, ' Road');
+        else if (translit.includes('தெரு')) translit = translit.replace(/தெரு/g, ' Street');
+        else if (translit.includes('சந்திப்பு')) translit = translit.replace(/சந்திப்பு/g, ' Junction');
+        else if (translit.includes('பூங்கா')) translit = translit.replace(/பூங்கா/g, ' Park');
+        else if (translit.includes('ஏரி')) translit = translit.replace(/ஏரி/g, ' Lake');
+        
+        // Hindi / Devanagari road terms
+        if (translit.includes('मार्ग')) translit = translit.replace(/मार्ग/g, ' Marg / Road');
+        else if (translit.includes('पथ')) translit = translit.replace(/पथ/g, ' Path');
+        else if (translit.includes('चौक')) translit = translit.replace(/चौक/g, ' Chowk');
+        
+        // Arabic road terms
+        if (translit.includes('طريق')) translit = translit.replace(/طريق/g, 'Road ');
+        else if (translit.includes('شارع')) translit = translit.replace(/شارع/g, 'Street ');
+        else if (translit.includes('ميدان')) translit = translit.replace(/ميدان/g, 'Square ');
+
+        if (translit !== rawName) {
+          englishName = translit.trim();
+        }
+      }
+
+      // 2. Identify Local Language tags
+      const countryCode = address.country_code?.toLowerCase();
+      
+      // Known city dictionary for instant, accurate bilingual local scripts
+      const knownCitiesMap = {
+        'coimbatore': { local: 'கோயம்புத்தூர்', en: 'Coimbatore', script: 'Tamil (தமிழ்)' },
+        'chennai': { local: 'சென்னை', en: 'Chennai', script: 'Tamil (தமிழ்)' },
+        'madurai': { local: 'மதுரை', en: 'Madurai', script: 'Tamil (தமிழ்)' },
+        'salem': { local: 'சேலம்', en: 'Salem', script: 'Tamil (தமிழ்)' },
+        'trichy': { local: 'திருச்சிராப்பள்ளி', en: 'Tiruchirappalli', script: 'Tamil (தமிழ்)' },
+        'tiruchirappalli': { local: 'திருச்சிராப்பள்ளி', en: 'Tiruchirappalli', script: 'Tamil (தமிழ்)' },
+        'bengaluru': { local: 'ಬೆಂಗಳೂರು', en: 'Bengaluru', script: 'Kannada (ಕನ್ನಡ)' },
+        'bangalore': { local: 'ಬೆಂಗಳೂರು', en: 'Bengaluru', script: 'Kannada (ಕನ್ನಡ)' },
+        'mysuru': { local: 'ಮೈಸೂರು', en: 'Mysuru', script: 'Kannada (ಕನ್ನಡ)' },
+        'mysore': { local: 'ಮೈಸೂರು', en: 'Mysuru', script: 'Kannada (ಕನ್ನಡ)' },
+        'mumbai': { local: 'मुंबई', en: 'Mumbai', script: 'Devanagari (मराठी)' },
+        'pune': { local: 'पुणे', en: 'Pune', script: 'Devanagari (मराठी)' },
+        'delhi': { local: 'नई दिल्ली', en: 'New Delhi', script: 'Devanagari (हिन्दी)' },
+        'new delhi': { local: 'नई दिल्ली', en: 'New Delhi', script: 'Devanagari (हिन्दी)' },
+        'hyderabad': { local: 'హైదరాబాద్', en: 'Hyderabad', script: 'Telugu (తెలుగు)' },
+        'kolkata': { local: 'কলকাতা', en: 'Kolkata', script: 'Bengali (বাংলা)' },
+        'kochi': { local: 'കൊച്ചി', en: 'Kochi', script: 'Malayalam (മലയാളം)' },
+        'trivandrum': { local: 'തിരുവനന്തപുരം', en: 'Thiruvananthapuram', script: 'Malayalam (മലയാളം)' },
+        'thiruvananthapuram': { local: 'തിരുവനന്തപുരം', en: 'Thiruvananthapuram', script: 'Malayalam (മലയാളം)' },
+        'ahmedabad': { local: 'અમદાવાદ', en: 'Ahmedabad', script: 'Gujarati (ગુજરાતી)' },
+        'jaipur': { local: 'जयपुर', en: 'Jaipur', script: 'Devanagari (हिन्दी)' }
+      };
+
+      const queryNormalized = userQuery.toLowerCase().trim();
+      const rawNormalized = (placeData.name || '').toLowerCase().trim();
+
+      if (knownCitiesMap[queryNormalized]) {
+        localName = knownCitiesMap[queryNormalized].local;
+        englishName = knownCitiesMap[queryNormalized].en;
+        detectedScript = knownCitiesMap[queryNormalized].script;
+      } else if (knownCitiesMap[rawNormalized]) {
+        localName = knownCitiesMap[rawNormalized].local;
+        englishName = knownCitiesMap[rawNormalized].en;
+        detectedScript = knownCitiesMap[rawNormalized].script;
+      }
+
+      // Check state-specific language tags for India
+      if (!localName && (countryCode === 'in' || address.country === 'India')) {
+        const stateName = (address.state || '').toLowerCase();
+        if (stateName.includes('tamil nadu')) {
+          localName = namedetails['name:ta'] || namedetails['name:ta_rm'];
+          if (localName) detectedScript = 'Tamil (தமிழ்)';
+        } else if (stateName.includes('karnataka')) {
+          localName = namedetails['name:kn'] || namedetails['name:kn_rm'];
+          if (localName) detectedScript = 'Kannada (ಕನ್ನಡ)';
+        } else if (stateName.includes('kerala')) {
+          localName = namedetails['name:ml'] || namedetails['name:ml_rm'];
+          if (localName) detectedScript = 'Malayalam (മലയാളം)';
+        } else if (stateName.includes('andhra') || stateName.includes('telangana')) {
+          localName = namedetails['name:te'] || namedetails['name:te_rm'];
+          if (localName) detectedScript = 'Telugu (తెలుగు)';
+        } else if (stateName.includes('maharashtra')) {
+          localName = namedetails['name:mr'] || namedetails['name:mr_rm'] || namedetails['name:hi'];
+          if (localName) detectedScript = 'Devanagari (मराठी)';
+        } else if (stateName.includes('bengal')) {
+          localName = namedetails['name:bn'] || namedetails['name:bn_rm'];
+          if (localName) detectedScript = 'Bengali (বাংলা)';
+        }
+
+        // Generic Indian fallback
+        if (!localName) {
+          localName = namedetails['name:hi'] || namedetails['name:ta'] || namedetails['name:kn'] || namedetails['name:te'] || namedetails['name:mr'];
+          if (localName) detectedScript = 'Regional Script (India)';
+        }
+      }
+
+      // Known language mapping by country code
+      const langPriorityMap = {
+        'jp': ['name:ja', 'name:ja_rm', 'Japanese (Kanji/Kana)'],
+        'sa': ['name:ar', 'name:ar_rm', 'Arabic (العربية)'],
+        'ae': ['name:ar', 'name:ar_rm', 'Arabic (العربية)'],
+        'eg': ['name:ar', 'name:ar_rm', 'Arabic (العربية)'],
+        'gr': ['name:el', 'name:el_rm', 'Greek (Ελληνικά)'],
+        'ru': ['name:ru', 'name:ru_rm', 'Cyrillic (Русский)'],
+        'cn': ['name:zh', 'name:zh-Hans', 'Chinese (中文)'],
+        'kr': ['name:ko', 'name:ko_rm', 'Hangul (한국어)'],
+        'th': ['name:th', 'name:th_rm', 'Thai (ภาษาไทย)'],
+        'fr': ['name:fr', 'French (Français)'],
+        'de': ['name:de', 'German (Deutsch)'],
+        'es': ['name:es', 'Spanish (Español)'],
+        'it': ['name:it', 'Italian (Italiano)']
+      };
+
+      if (!localName && langPriorityMap[countryCode]) {
+        const langTags = langPriorityMap[countryCode];
+        for (let tag of langTags) {
+          if (namedetails[tag]) {
+            localName = namedetails[tag];
+            detectedScript = langTags[langTags.length - 1];
+            break;
+          }
+        }
+      }
+
+      // 3. Fallbacks using non-Latin regex detection
+      if (!localName) {
+        // Test if rawName has non-Latin characters (Kanji, Arabic, Cyrillic, Tamil, Devanagari, etc.)
+        const nonLatinRegex = /[^\u0000-\u007F]/;
+        if (nonLatinRegex.test(rawName)) {
+          localName = rawName;
+          
+          // Script classifier
+          if (/[\u0B80-\u0BFF]/.test(rawName)) detectedScript = 'Tamil (தமிழ்)';
+          else if (/[\u0C80-\u0CFF]/.test(rawName)) detectedScript = 'Kannada (ಕನ್ನಡ)';
+          else if (/[\u0C00-\u0C7F]/.test(rawName)) detectedScript = 'Telugu (తెలుగు)';
+          else if (/[\u0D00-\u0D7F]/.test(rawName)) detectedScript = 'Malayalam (മലയാളം)';
+          else if (/[\u0900-\u097F]/.test(rawName)) detectedScript = 'Devanagari (हिन्दी / मराठी)';
+          else if (/[\u0980-\u09FF]/.test(rawName)) detectedScript = 'Bengali (বাংলা)';
+          else if (/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(rawName)) detectedScript = 'Japanese / Chinese';
+          else if (/[\u0600-\u06FF]/.test(rawName)) detectedScript = 'Arabic (العربية)';
+          else if (/[\u0400-\u04FF]/.test(rawName)) detectedScript = 'Cyrillic (Русский)';
+          else if (/[\u0370-\u03FF]/.test(rawName)) detectedScript = 'Greek (Ελληνικά)';
+          else if (/[\uAC00-\uD7AF]/.test(rawName)) detectedScript = 'Hangul (한국어)';
+          else detectedScript = 'Regional Script';
+        } else {
+          localName = rawName;
+          detectedScript = 'Latin Script';
+        }
+      }
+
+      // If englishName is still empty, look at userQuery or rawName
+      if (!englishName) {
+        if (/^[a-zA-Z0-9\s,\.'-]+$/.test(userQuery) && userQuery.trim().length > 0) {
+          englishName = userQuery.trim();
+        } else {
+          englishName = rawName;
+        }
+      }
+
+      // Smooth fallback if both are identical
+      if (localName.toLowerCase() === englishName.toLowerCase()) {
+        const adminPart = address.city || address.state || address.country || '';
+        if (adminPart && adminPart !== englishName) {
+          englishName = `${englishName} (${adminPart})`;
+        }
+      }
+
+      return {
+        primaryLocal: localName,
+        secondaryEnglish: englishName,
+        detectedScript: detectedScript
+      };
+    }
+
+    // --- 4. MAP INITIALIZATION & TILE LAYERS (Requirement 1) ---
+    function initMap() {
+      // Starting location: Coimbatore (Pastel Vector Road showcase)
+      const startCoord = [11.0168, 76.9558];
+      
+      appState.map = L.map('map', {
+        center: startCoord,
+        zoom: 13,
+        zoomControl: false,
+        attributionControl: true
+      });
+
+      // Relocate zoom control to bottom right for modern UI ergonomics
+      L.control.zoom({ position: 'bottomright' }).addTo(appState.map);
+
+      // Add Map Scale Bar (matching exact reference image: 50 km / 30 mi in bottom-left)
+      L.control.scale({
+        position: 'bottomleft',
+        maxWidth: 120,
+        metric: true,
+        imperial: true
+      }).addTo(appState.map);
+
+      // High-performance CARTO Voyager Vector Road Tiles:
+      // 1. Works with file:/// and http:// (no HTTP 403 referrer blocks like raw OSM tile server)
+      // 2. Clearly renders every street, highway, avenue, alley, park, and water body with pastel vector styling
+      // 3. Includes bilingual street, neighborhood, and place names
+      appState.activeTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        maxZoom: 20,
+        subdomains: 'abcd',
+        className: 'pastel-tiles',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> | TerraLingua'
+      }).addTo(appState.map);
+
+      // Populate Initial Bilingual Preset Markers
+      renderPresetMarkers();
+
+      // Set initial telemetry readout
+      updateTelemetry(startCoord[0], startCoord[1], 13);
+    }
+
+    // Custom DivIcon for Bilingual Street and Highway Badges
+    function createStreetLabelIcon(localName, englishName, isHighway = false) {
+      const pillBg = isHighway 
+        ? 'bg-[#F4A261] text-white border-[#E76F51] shadow-md' 
+        : 'bg-white/95 text-slate-800 border-amber-300 shadow-sm';
+      const enColor = isHighway ? 'text-amber-100' : 'text-[#E76F51]';
+
+      return L.divIcon({
+        className: 'bilingual-street-pill',
+        html: `
+          <div class="inline-flex flex-col items-center px-2 py-0.5 rounded-lg border ${pillBg} backdrop-blur-sm pointer-events-auto whitespace-nowrap transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform cursor-pointer">
+            <span class="text-[11px] font-black leading-tight tracking-tight">${localName}</span>
+            <span class="text-[9px] font-bold uppercase tracking-wider ${enColor} leading-tight">${englishName}</span>
+          </div>
+        `,
+        iconSize: [0, 0]
+      });
+    }
+
+    // Renders interactive bilingual street and highway labels along road networks
+    function renderBilingualStreets(streetsList) {
+      if (appState.streetMarkers) {
+        appState.streetMarkers.forEach(m => appState.map.removeLayer(m));
+      }
+      appState.streetMarkers = [];
+
+      if (!streetsList || !streetsList.length) return;
+
+      streetsList.forEach(st => {
+        const icon = createStreetLabelIcon(st.nameLocal, st.nameEn, st.isHighway);
+        const marker = L.marker([st.lat, st.lng], { icon: icon }).addTo(appState.map);
+
+        const popupContent = `
+          <div class="p-3 text-slate-800">
+            <div class="flex items-center gap-1.5 mb-1">
+              <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${st.isHighway ? 'bg-orange-100 text-orange-900' : 'bg-slate-100 text-slate-700'}">${st.isHighway ? 'Arterial Highway' : 'City Street / Intersection'}</span>
+            </div>
+            <div class="text-base font-extrabold text-slate-900 leading-tight">${st.nameLocal}</div>
+            <div class="text-xs font-bold text-[#E76F51] uppercase tracking-wider mt-0.5">${st.nameEn}</div>
+            <div class="mt-2 pt-1.5 border-t border-slate-100 text-[10px] text-slate-500">📍 Dual-Language Road Sign</div>
+          </div>
+        `;
+        marker.bindPopup(popupContent, { maxWidth: 260 });
+        appState.streetMarkers.push(marker);
+      });
+    }
+
+    /**
+     * DYNAMIC BILINGUAL STREET FETCHER FOR ALL PLACES:
+     * Queries OpenStreetMap Overpass API or Nominatim for ANY location on Earth
+     * Extracts Primary Local Script & English Translation directly below
+     */
+    async function fetchDynamicBilingualStreets(lat, lng, cityName = '') {
+      if (!lat || !lng) return;
+
+      const statusEl = document.getElementById('telemetryStatus');
+      if (statusEl) statusEl.textContent = 'Scanning streets in area...';
+
+      // 1. Instant match from curated preset catalog
+      const matchedPreset = BILINGUAL_PRESETS.find(p => 
+        (cityName && p.nameEn.toLowerCase() === cityName.toLowerCase()) ||
+        (cityName && p.id === cityName.toLowerCase()) ||
+        (Math.abs(p.lat - lat) < 0.08 && Math.abs(p.lng - lng) < 0.08)
+      );
+
+      if (matchedPreset && matchedPreset.streets && matchedPreset.streets.length > 0) {
+        renderBilingualStreets(matchedPreset.streets);
+        if (statusEl) statusEl.textContent = `🛣️ ${matchedPreset.streets.length} Bilingual Streets Active`;
+        return;
+      }
+
+      // 2. Query Overpass API for real OpenStreetMap highway ways around this coordinate (3.5km radius)
+      const overpassQuery = `
+        [out:json][timeout:10];
+        (
+          way["highway"~"primary|secondary|tertiary|trunk|motorway"]["name"](around:3500, ${lat}, ${lng});
+        );
+        out tags center 35;
+      `;
+
+      const overpassEndpoints = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
+      ];
+
+      let elements = [];
+
+      for (let ep of overpassEndpoints) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5500);
+          const res = await fetch(`${ep}?data=${encodeURIComponent(overpassQuery)}`, { signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.elements && data.elements.length > 0) {
+              elements = data.elements;
+              break;
+            }
+          }
+        } catch (err) {
+          console.warn(`Overpass mirror ${ep} notice:`, err);
+        }
+      }
+
+      if (elements.length > 0) {
+        const uniqueStreets = new Map();
+
+        elements.forEach(el => {
+          const tags = el.tags || {};
+          const rawName = tags.name;
+          if (!rawName || rawName.trim().length < 2) return;
+
+          const key = rawName.toLowerCase().trim();
+          if (uniqueStreets.has(key)) return;
+
+          const center = el.center || {};
+          if (!center.lat || !center.lon) return;
+
+          const bilingual = parseDualLanguageNames({ tags: tags, name: rawName, address: {} }, rawName);
+          const isHighway = ['primary', 'trunk', 'motorway'].includes(tags.highway);
+
+          uniqueStreets.set(key, {
+            nameLocal: bilingual.primaryLocal || rawName,
+            nameEn: bilingual.secondaryEnglish || rawName,
+            lat: center.lat,
+            lng: center.lon,
+            isHighway: isHighway
+          });
+        });
+
+        const streetList = Array.from(uniqueStreets.values()).slice(0, 18);
+        if (streetList.length > 0) {
+          renderBilingualStreets(streetList);
+          showToast(`Loaded ${streetList.length} bilingual streets for this location`, 'info');
+          if (statusEl) statusEl.textContent = `🛣️ ${streetList.length} Bilingual Streets Live`;
+          return;
+        }
+      }
+
+      // 3. Fallback: Query Nominatim for arterial roads in this area
+      try {
+        const nomUrl = `https://nominatim.openstreetmap.org/search?q=road+in+${encodeURIComponent(cityName || (lat.toFixed(3) + ',' + lng.toFixed(3)))}&format=jsonv2&addressdetails=1&extratags=1&namedetails=1&limit=10&accept-language=ta,hi,kn,te,ml,mr,ar,ja,zh,ru,en`;
+        const nomRes = await fetch(nomUrl);
+        if (nomRes.ok) {
+          const nomData = await nomRes.json();
+          if (nomData && nomData.length > 0) {
+            const streetList = nomData.map((item, idx) => {
+              const b = parseDualLanguageNames(item, item.name || 'Road');
+              return {
+                nameLocal: b.primaryLocal,
+                nameEn: b.secondaryEnglish,
+                lat: parseFloat(item.lat),
+                lng: parseFloat(item.lon),
+                isHighway: idx % 2 === 0
+              };
+            });
+            renderBilingualStreets(streetList);
+            if (statusEl) statusEl.textContent = `🛣️ ${streetList.length} Bilingual Streets Live`;
+            return;
+          }
+        }
+      } catch (nomErr) {
+        console.warn('Nominatim street fallback notice:', nomErr);
+      }
+
+      if (statusEl) statusEl.textContent = 'Map Ready';
+    }
+
+    // --- 5. RENDER PRESET CHIPS & MARKERS ---
+    function renderPresetMarkers() {
+      // Clear existing markers
+      appState.activeMarkers.forEach(m => appState.map.removeLayer(m));
+      appState.activeMarkers = [];
+
+      const chipsContainer = document.getElementById('presetChipsContainer');
+      chipsContainer.innerHTML = '';
+
+      BILINGUAL_PRESETS.forEach(preset => {
+        // Create Sidebar Preset Pill
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 hover:border-amber-400 hover:bg-amber-50/60 text-slate-700 transition-all flex items-center gap-1.5 shadow-sm active:scale-95';
+        chip.innerHTML = `
+          <span class="font-bold text-slate-900">${preset.nameLocal}</span>
+          <span class="text-[10px] text-[#E76F51] font-medium">${preset.nameEn}</span>
+        `;
+        chip.addEventListener('click', () => {
+          selectLocationPreset(preset);
+        });
+        chipsContainer.appendChild(chip);
+
+        // Add Leaflet Marker with Custom Teardrop DivIcon
+        const icon = createTeardropIcon(preset.pinType, 36);
+        const marker = L.marker([preset.lat, preset.lng], { icon: icon }).addTo(appState.map);
+
+        // Custom Bilingual Leaflet Popup
+        const popupContent = createBilingualPopupContent(
+          preset.nameLocal,
+          preset.nameEn,
+          preset.script,
+          preset.admin,
+          preset.desc
+        );
+
+        marker.bindPopup(popupContent, { maxWidth: 300 });
+
+        // Event listener on marker click
+        marker.on('click', () => {
+          selectLocationPreset(preset, false);
+        });
+
+        appState.activeMarkers.push(marker);
+      });
+
+      // Default active location: Coimbatore
+      selectLocationPreset(BILINGUAL_PRESETS[0], false);
+    }
+
+    // --- 6. POPUP HTML GENERATOR (Bilingual Requirement) ---
+    function createBilingualPopupContent(primaryLocal, secondaryEnglish, scriptName, adminLoc, desc) {
+      return `
+        <div class="p-4 text-slate-800">
+          <div class="flex items-center gap-1.5 mb-1.5">
+            <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-100 text-amber-900">${scriptName}</span>
+            <span class="text-[10px] text-slate-400 font-medium truncate">${adminLoc || ''}</span>
+          </div>
+          
+          <!-- Primary Local Language (Local Script) -->
+          <div class="text-xl font-extrabold text-slate-900 tracking-tight leading-tight mb-0.5">${primaryLocal}</div>
+          
+          <!-- Secondary English Translation Directly Below -->
+          <div class="text-xs font-bold text-[#E76F51] uppercase tracking-wider mb-2">${secondaryEnglish}</div>
+          
+          ${desc ? `<p class="text-xs text-slate-600 border-t border-slate-100 pt-2 leading-relaxed">${desc}</p>` : ''}
+          
+          <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+            <span>📍 Pastel Vector Road Map</span>
+            <span class="text-[#C71585] font-semibold">Bilingual Node</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- 7. SELECT LOCATION PRESET ACTION ---
+    function selectLocationPreset(preset, fly = true) {
+      if (fly) {
+        appState.map.flyTo([preset.lat, preset.lng], preset.zoom, {
+          duration: 1.8,
+          easeLinearity: 0.25
+        });
+      }
+
+      updateDetailCard({
+        primaryLocal: preset.nameLocal,
+        secondaryEnglish: preset.nameEn,
+        detectedScript: preset.script,
+        lat: preset.lat,
+        lng: preset.lng,
+        admin: preset.admin,
+        desc: preset.desc,
+        category: preset.category
+      });
+
+      // Fetch / Render Bilingual Street and Highway Badges dynamically
+      fetchDynamicBilingualStreets(preset.lat, preset.lng, preset.nameEn);
+
+      showToast(`Navigated to ${preset.nameLocal} (${preset.nameEn})`, 'info');
+    }
+
+    // --- 8. UPDATE SIDEBAR DETAIL CARD ---
+    function updateDetailCard(data) {
+      appState.activeLocation = data;
+
+      document.getElementById('detailPrimaryName').textContent = data.primaryLocal;
+      document.getElementById('detailEnglishName').textContent = data.secondaryEnglish;
+      document.getElementById('badgeScript').textContent = data.detectedScript;
+      document.getElementById('badgeCategory').textContent = data.category ? data.category.toUpperCase() : 'LOCATION';
+      document.getElementById('detailCoords').textContent = `${Number(data.lat).toFixed(4)}° N, ${Number(data.lng).toFixed(4)}° E`;
+      document.getElementById('detailAdmin').textContent = data.admin || 'OpenStreetMap Verified Node';
+      document.getElementById('detailDescription').textContent = data.desc || `Bilingual place record retrieved via OpenStreetMap geocoding engine with verified script metadata.`;
+
+      // Hide empty state if visible
+      document.getElementById('emptyStateBanner').classList.add('hidden');
+      document.getElementById('locationDetailCard').classList.remove('hidden');
+    }
+
+    // --- 9. ASYNCHRONOUS FETCH API & REVERSE GEOCODING (Requirement 4 & 5) ---
+    /**
+     * Resilient Multi-Tier Geocoding Engine
+     * Tier 1: Instant Local Bilingual Database check
+     * Tier 2: OpenStreetMap Nominatim (Simple GET, no custom headers to prevent CORS preflight)
+     * Tier 3: Photon OSM Geocoder (CORS-enabled global backup)
+     * Tier 4: Open-Meteo Global Geocoding API
+     */
+    async function searchLocation(query) {
+      if (!query || query.trim().length < 2) return;
+
+      const trimmedQuery = query.trim();
+      const queryLower = trimmedQuery.toLowerCase();
+      setLoadingState(true, `Searching "${trimmedQuery}"`, 'Resolving coordinates & bilingual script metadata...');
+
+      // Check instant preset match first for 0ms lag
+      const directPreset = BILINGUAL_PRESETS.find(p => 
+        p.id === queryLower ||
+        p.nameEn.toLowerCase() === queryLower || 
+        p.nameLocal === trimmedQuery ||
+        p.nameEn.toLowerCase().includes(queryLower)
+      );
+
+      if (directPreset) {
+        selectLocationPreset(directPreset);
+        setLoadingState(false);
+        showToast(`Located ${directPreset.nameLocal} (${directPreset.nameEn})`, 'success');
+        return;
+      }
+
+      let lat = null;
+      let lon = null;
+      let placeData = null;
+      let providerUsed = 'OSM Nominatim';
+
+      try {
+        // TIER 1: OpenStreetMap Nominatim (Simple GET request without custom headers to avoid CORS preflight in file://)
+        const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(trimmedQuery)}&format=jsonv2&addressdetails=1&extratags=1&namedetails=1&limit=5&accept-language=ta,hi,kn,te,ml,mr,ar,ja,zh,ru,en`;
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 4500);
+
+          const res = await fetch(nominatimUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.length > 0) {
+              placeData = data[0];
+              lat = parseFloat(placeData.lat);
+              lon = parseFloat(placeData.lon);
+            }
+          }
+        } catch (osmErr) {
+          console.warn('Nominatim failed or was blocked, falling back to Photon API:', osmErr);
+        }
+
+        // TIER 2: Photon Geocoder (Komoot OSM - fully CORS enabled, high reliability)
+        if (lat === null || isNaN(lat)) {
+          try {
+            providerUsed = 'Photon OSM';
+            const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(trimmedQuery)}&limit=5`;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+            const res = await fetch(photonUrl, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            if (res.ok) {
+              const geojson = await res.json();
+              if (geojson.features && geojson.features.length > 0) {
+                const feat = geojson.features[0];
+                lon = feat.geometry.coordinates[0];
+                lat = feat.geometry.coordinates[1];
+                const props = feat.properties || {};
+                
+                placeData = {
+                  name: props.name || trimmedQuery,
+                  display_name: [props.name, props.city, props.state, props.country].filter(Boolean).join(', '),
+                  namedetails: {},
+                  address: {
+                    country: props.country,
+                    country_code: props.countrycode?.toLowerCase(),
+                    state: props.state,
+                    city: props.city || props.name
+                  },
+                  type: props.osm_value || 'place'
+                };
+              }
+            }
+          } catch (photonErr) {
+            console.warn('Photon geocoder failed, falling back to Open-Meteo:', photonErr);
+          }
+        }
+
+        // TIER 3: Open-Meteo Global Geocoding API (Zero-rate-limit fallback)
+        if (lat === null || isNaN(lat)) {
+          try {
+            providerUsed = 'Open-Meteo';
+            const meteoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(trimmedQuery)}&count=5&format=json`;
+            const res = await fetch(meteoUrl);
+            if (res.ok) {
+              const meteoData = await res.json();
+              if (meteoData.results && meteoData.results.length > 0) {
+                const top = meteoData.results[0];
+                lat = top.latitude;
+                lon = top.longitude;
+                placeData = {
+                  name: top.name,
+                  display_name: [top.name, top.admin1, top.country].filter(Boolean).join(', '),
+                  namedetails: {},
+                  address: {
+                    country: top.country,
+                    country_code: top.country_code?.toLowerCase(),
+                    state: top.admin1,
+                    city: top.name
+                  },
+                  type: 'city'
+                };
+              }
+            }
+          } catch (meteoErr) {
+            console.warn('Open-Meteo geocoding failed:', meteoErr);
+          }
+        }
+
+        // TIER 4: Local Fuzzy Search if all network calls failed
+        if (lat === null || isNaN(lat)) {
+          const fallbackMatch = BILINGUAL_PRESETS.find(p => 
+            p.nameEn.toLowerCase().includes(queryLower) || 
+            queryLower.includes(p.nameEn.toLowerCase()) ||
+            p.nameLocal.includes(trimmedQuery)
+          );
+
+          if (fallbackMatch) {
+            selectLocationPreset(fallbackMatch);
+            showToast(`Loaded ${fallbackMatch.nameLocal} (${fallbackMatch.nameEn}) from verified catalog`, 'info');
+            return;
+          }
+
+          // If really nothing found
+          showEmptyState(trimmedQuery);
+          return;
+        }
+
+        // Success: Process and render coordinates and dual-language labels
+        const bilingualNames = parseDualLanguageNames(placeData, trimmedQuery);
+
+        // Fly map smoothly to location
+        appState.map.flyTo([lat, lon], 14, {
+          duration: 1.8,
+          easeLinearity: 0.25
+        });
+
+        // Add custom Red-Violet teardrop marker
+        const marker = L.marker([lat, lon], {
+          icon: createTeardropIcon('redViolet', 40)
+        }).addTo(appState.map);
+
+        const adminSummary = placeData.display_name?.split(',').slice(1, 4).join(',') || placeData.address?.state || 'Verified Geographic Node';
+
+        const popupContent = createBilingualPopupContent(
+          bilingualNames.primaryLocal,
+          bilingualNames.secondaryEnglish,
+          bilingualNames.detectedScript,
+          adminSummary,
+          `Source: ${providerUsed} | Coordinates: ${lat.toFixed(4)}° N, ${lon.toFixed(4)}° E`
+        );
+
+        marker.bindPopup(popupContent, { maxWidth: 320 }).openPopup();
+        appState.activeMarkers.push(marker);
+
+        // Update active location panel
+        updateDetailCard({
+          primaryLocal: bilingualNames.primaryLocal,
+          secondaryEnglish: bilingualNames.secondaryEnglish,
+          detectedScript: bilingualNames.detectedScript,
+          lat: lat,
+          lng: lon,
+          admin: adminSummary,
+          desc: placeData.display_name || `Point at coordinates ${lat.toFixed(4)}° N, ${lon.toFixed(4)}° E`,
+          category: placeData.type || 'Search Result'
+        });
+
+        // Render bilingual street labels dynamically for ANY location on Earth
+        fetchDynamicBilingualStreets(lat, lon, placeData.name || trimmedQuery);
+
+        showToast(`Located ${bilingualNames.primaryLocal} (${bilingualNames.secondaryEnglish}) via ${providerUsed}`, 'success');
+
+      } catch (err) {
+        console.error('Unhandled search error:', err);
+        showToast(`Search notice: ${err.message}`, 'error');
+        showEmptyState(trimmedQuery);
+      } finally {
+        setLoadingState(false);
+      }
+    }
+
+    /**
+     * Reverse Geocodes when user clicks anywhere on map (Event 3)
+     */
+    async function reverseGeocode(lat, lng) {
+      setLoadingState(true, 'Reverse Geocoding...', `Inspecting coordinates ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+
+      let placeData = null;
+
+      try {
+        // Simple fetch without custom headers to avoid CORS preflight in file:///
+        const reverseUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2&namedetails=1&extratags=1&addressdetails=1&accept-language=ta,hi,kn,te,ml,mr,ar,ja,zh,ru,en`;
+        
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 4000);
+          const response = await fetch(reverseUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            placeData = await response.json();
+          }
+        } catch (osmErr) {
+          console.warn('Reverse OSM failed, checking Photon reverse:', osmErr);
+        }
+
+        // Photon reverse fallback
+        if (!placeData) {
+          try {
+            const photonRev = `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`;
+            const res = await fetch(photonRev);
+            if (res.ok) {
+              const geojson = await res.json();
+              if (geojson.features && geojson.features.length > 0) {
+                const props = geojson.features[0].properties || {};
+                placeData = {
+                  name: props.name || props.city || 'Inspected Point',
+                  display_name: [props.name, props.city, props.state, props.country].filter(Boolean).join(', '),
+                  address: { country: props.country, state: props.state, city: props.city },
+                  namedetails: {}
+                };
+              }
+            }
+          } catch (photonErr) {
+            console.warn('Photon reverse failed:', photonErr);
+          }
+        }
+
+        // If data retrieved
+        if (placeData) {
+          const bilingualNames = parseDualLanguageNames(placeData, 'Clicked Map Point');
+          const adminText = placeData.address ? (placeData.address.city || placeData.address.town || placeData.address.state || placeData.address.country || '') : '';
+
+          const marker = L.marker([lat, lng], {
+            icon: createTeardropIcon('softBlue', 38)
+          }).addTo(appState.map);
+
+          const popupContent = createBilingualPopupContent(
+            bilingualNames.primaryLocal,
+            bilingualNames.secondaryEnglish,
+            bilingualNames.detectedScript,
+            adminText,
+            placeData.display_name || 'Geocoded point on road network'
+          );
+
+          marker.bindPopup(popupContent, { maxWidth: 300 }).openPopup();
+          appState.activeMarkers.push(marker);
+
+          updateDetailCard({
+            primaryLocal: bilingualNames.primaryLocal,
+            secondaryEnglish: bilingualNames.secondaryEnglish,
+            detectedScript: bilingualNames.detectedScript,
+            lat: lat,
+            lng: lng,
+            admin: adminText || 'Inspected GPS Location',
+            desc: placeData.display_name || `Point at coordinates ${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`,
+            category: placeData.type || 'Custom Node'
+          });
+
+          showToast(`Inspected ${bilingualNames.primaryLocal}`, 'success');
+          return;
+        }
+
+        // Coordinate-based fallback
+        const fallbackLocal = `புவியியல் புள்ளி (${lat.toFixed(2)}, ${lng.toFixed(2)})`;
+        const fallbackEn = `Point at ${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+
+        const marker = L.marker([lat, lng], {
+          icon: createTeardropIcon('softBlue', 36)
+        }).addTo(appState.map);
+
+        const popupContent = createBilingualPopupContent(fallbackLocal, fallbackEn, 'Geographic Point', 'GPS Coordinates', `Latitude: ${lat.toFixed(5)}° N, Longitude: ${lng.toFixed(5)}° E`);
+        marker.bindPopup(popupContent).openPopup();
+        appState.activeMarkers.push(marker);
+
+        updateDetailCard({
+          primaryLocal: fallbackLocal,
+          secondaryEnglish: fallbackEn,
+          detectedScript: 'GPS Coordinates',
+          lat: lat,
+          lng: lng,
+          admin: 'Map Coordinate Node',
+          desc: `Coordinates: ${lat.toFixed(5)}° N, ${lng.toFixed(5)}° E`,
+          category: 'Coordinates'
+        });
+
+        showToast(`Dropped Pin at ${lat.toFixed(3)}, ${lng.toFixed(3)}`, 'info');
+
+      } catch (err) {
+        console.warn('Reverse geocode error:', err);
+      } finally {
+        setLoadingState(false);
+      }
+    }
+
+
+    
+    // --- 9B. VECTOR ROAD ROUTE NAVIGATION ENGINE (Matching User Reference Image) ---
+    /**
+     * Complete Route Navigation System matching OpenStreetMap / OSRM specifications:
+     * - Origin Point A: Green teardrop marker with directional navigation pointer arrow
+     * - Destination Point B: Red teardrop marker with finish flag
+     * - Route Polyline: Soft cornflower blue line (#6495ED) tracing the highway network
+     * - Scale Bar: 50 km / 30 mi in bottom-left
+     * - Dual-Language Corridor Waypoints (Kolar, Chittoor, Vellore, etc.)
+     * - Dynamic OSRM driving engine for ANY two places on Earth with multi-mirror failover
+     */
+
+    // High-precision pre-cached geometry for Bengaluru ⇄ Chennai (Exact reference route)
+    const BENGALURU_CHENNAI_ROUTE_GEO = [[77.594697, 12.971848], [77.594226, 12.97246], [77.597125, 12.975144], [77.599499, 12.976704], [77.602069, 12.977937], [77.605438, 12.978345], [77.607925, 12.977529], [77.614321, 12.975417], [77.613989, 12.973757], [77.616868, 12.973101], [77.618684, 12.972683], [77.620182, 12.972753], [77.621916, 12.9731], [77.624656, 12.974663], [77.626748, 12.976595], [77.628659, 12.978425], [77.631196, 12.9815], [77.636299, 12.982681], [77.640595, 12.984151], [77.647337, 12.986702], [77.651014, 12.988363], [77.656898, 12.991153], [77.661737, 12.993529], [77.668529, 12.996643], [77.678347, 13.001354], [77.692091, 13.00818], [77.695767, 13.008405], [77.69823, 13.011233], [77.700242, 13.014401], [77.707896, 13.019142], [77.723677, 13.028038], [77.732433, 13.033397], [77.744952, 13.042323], [77.755652, 13.04998], [77.760509, 13.052859], [77.764218, 13.054884], [77.7693, 13.057831], [77.773412, 13.062647], [77.782817, 13.069897], [77.793527, 13.075955], [77.803164, 13.077306], [77.811313, 13.078903], [77.819581, 13.083445], [77.824491, 13.085203], [77.822744, 13.085901], [77.824756, 13.069864], [77.824922, 13.056361], [77.824749, 13.045349], [77.826431, 13.042085], [77.827826, 13.040838], [77.829789, 13.039792], [77.833253, 13.039279], [77.839, 13.039651], [77.849884, 13.040356], [77.869932, 13.041667], [77.882655, 13.042505], [77.888883, 13.043381], [77.899585, 13.044718], [77.910267, 13.044662], [77.914624, 13.044608], [77.918578, 13.044505], [77.938001, 13.043824], [77.964218, 13.04148], [77.973805, 13.04054], [77.982566, 13.038481], [77.992633, 13.038654], [78.003345, 13.036798], [78.017863, 13.036192], [78.026019, 13.035193], [78.039655, 13.035015], [78.048812, 13.035102], [78.06553, 13.037507], [78.112106, 13.036502], [78.164313, 13.026071], [78.20194, 13.018423], [78.230979, 13.017294], [78.256549, 13.014638], [78.291665, 13.004189], [78.313908, 13.002756], [78.322965, 12.999373], [78.339043, 13.000538], [78.351693, 12.997716], [78.374387, 13.000224], [78.385203, 13.000692], [78.396593, 13.004052], [78.404601, 13.00867], [78.407566, 13.014939], [78.412357, 13.012454], [78.42309, 13.009963], [78.431781, 13.010466], [78.437242, 13.01038], [78.443564, 13.009162], [78.447995, 13.008924], [78.456291, 13.006751], [78.464618, 13.004992], [78.471124, 13.004032], [78.476257, 13.002824], [78.483169, 13.002216], [78.487924, 13.002347], [78.495216, 12.99645], [78.503456, 12.9855], [78.508809, 12.978111], [78.514143, 12.973467], [78.520112, 12.968431], [78.528576, 12.963935], [78.535618, 12.959454], [78.542798, 12.95506], [78.550707, 12.952266], [78.559236, 12.952102], [78.568205, 12.952285], [78.571923, 12.953417], [78.576657, 12.954869], [78.581995, 12.953758], [78.585697, 12.952891], [78.590506, 12.951044], [78.592921, 12.94994], [78.597907, 12.947376], [78.601354, 12.945538], [78.603742, 12.942957], [78.608382, 12.943829], [78.612544, 12.943258], [78.615755, 12.942189], [78.620476, 12.939883], [78.623769, 12.937132], [78.626938, 12.934862], [78.632678, 12.932779], [78.636921, 12.932165], [78.640703, 12.931465], [78.644399, 12.929928], [78.647666, 12.930275], [78.6508, 12.929699], [78.654898, 12.930646], [78.659162, 12.93192], [78.663552, 12.930901], [78.666427, 12.930474], [78.667444, 12.930311], [78.666936, 12.930928], [78.666715, 12.931494], [78.668498, 12.932225], [78.676148, 12.933367], [78.679768, 12.932785], [78.680871, 12.935477], [78.683267, 12.936099], [78.692745, 12.934261], [78.703141, 12.934094], [78.709624, 12.934829], [78.71403, 12.936769], [78.717172, 12.940607], [78.720006, 12.942763], [78.721807, 12.943359], [78.722684, 12.943162], [78.725369, 12.942506], [78.732181, 12.942102], [78.744012, 12.938086], [78.751286, 12.937912], [78.758497, 12.938776], [78.770111, 12.943845], [78.775234, 12.94422], [78.787765, 12.945767], [78.796007, 12.94673], [78.804356, 12.947105], [78.815992, 12.948194], [78.823529, 12.949292], [78.832154, 12.948143], [78.837448, 12.945239], [78.843137, 12.944587], [78.846625, 12.946], [78.851956, 12.948649], [78.857817, 12.956398], [78.863106, 12.964891], [78.865694, 12.966059], [78.87012, 12.963819], [78.876124, 12.960741], [78.893629, 12.956194], [78.901967, 12.955067], [78.911412, 12.956624], [78.926106, 12.9562], [78.936811, 12.955002], [78.956013, 12.956507], [78.977328, 12.955461], [78.982615, 12.955166], [78.986833, 12.955726], [78.992821, 12.957275], [78.998707, 12.955683], [79.005109, 12.958065], [79.013139, 12.962632], [79.018083, 12.962681], [79.023376, 12.962018], [79.030249, 12.962707], [79.044383, 12.965023], [79.053674, 12.966622], [79.059137, 12.968042], [79.062486, 12.968765], [79.067541, 12.972446], [79.071443, 12.97326], [79.076432, 12.976049], [79.082995, 12.976878], [79.089605, 12.975399], [79.097238, 12.975798], [79.108456, 12.975745], [79.114899, 12.975873], [79.122928, 12.974572], [79.132657, 12.97428], [79.136918, 12.973015], [79.137152, 12.970674], [79.139103, 12.968587], [79.141704, 12.968757], [79.147466, 12.968467], [79.153391, 12.968118], [79.156046, 12.968081], [79.16387, 12.966244], [79.169316, 12.966147], [79.176297, 12.967918], [79.179845, 12.968501], [79.18592, 12.968666], [79.193243, 12.968023], [79.200859, 12.967881], [79.210729, 12.968384], [79.218135, 12.96944], [79.221379, 12.970786], [79.22538, 12.971011], [79.228044, 12.97292], [79.232468, 12.976697], [79.235735, 12.983339], [79.241675, 12.992819], [79.245584, 12.996829], [79.253867, 12.992756], [79.261437, 12.989841], [79.272568, 12.985557], [79.275684, 12.98161], [79.278139, 12.978458], [79.284414, 12.972821], [79.289868, 12.966565], [79.296445, 12.962368], [79.303049, 12.956659], [79.308574, 12.952244], [79.314944, 12.950754], [79.320353, 12.946295], [79.321794, 12.943279], [79.322964, 12.938762], [79.325381, 12.936335], [79.330065, 12.934229], [79.333055, 12.932948], [79.33832, 12.930537], [79.345151, 12.928285], [79.352478, 12.925525], [79.359364, 12.925452], [79.369608, 12.924925], [79.373744, 12.923576], [79.378737, 12.921123], [79.383592, 12.919028], [79.391294, 12.916219], [79.397206, 12.913054], [79.404522, 12.909444], [79.412578, 12.906881], [79.42164, 12.904173], [79.440815, 12.900703], [79.4525, 12.90023], [79.471908, 12.901638], [79.485786, 12.901918], [79.498457, 12.896367], [79.508263, 12.897465], [79.520851, 12.898009], [79.532449, 12.898365], [79.541035, 12.898353], [79.552783, 12.898545], [79.563829, 12.898091], [79.573124, 12.896829], [79.581396, 12.895101], [79.587797, 12.893271], [79.595068, 12.889246], [79.598492, 12.883672], [79.603007, 12.881213], [79.611674, 12.877885], [79.616345, 12.874553], [79.624721, 12.874633], [79.632407, 12.872965], [79.641851, 12.870863], [79.655005, 12.871439], [79.669681, 12.873784], [79.67736, 12.874459], [79.694359, 12.873982], [79.701313, 12.873251], [79.707308, 12.871792], [79.713386, 12.871376], [79.719657, 12.870935], [79.724363, 12.871601], [79.738165, 12.873213], [79.762185, 12.875034], [79.767274, 12.875775], [79.775628, 12.877882], [79.789898, 12.886506], [79.793904, 12.8898], [79.796447, 12.892541], [79.803725, 12.896083], [79.811259, 12.900769], [79.818493, 12.903986], [79.831182, 12.907267], [79.847321, 12.911419], [79.856084, 12.91406], [79.864871, 12.918128], [79.873779, 12.922266], [79.877293, 12.922131], [79.889713, 12.926871], [79.895259, 12.93061], [79.903284, 12.933586], [79.908842, 12.933933], [79.918259, 12.942104], [79.925868, 12.948631], [79.933553, 12.954119], [79.938437, 12.955232], [79.941989, 12.955867], [79.943986, 12.959065], [79.945531, 12.962596], [79.950816, 12.964478], [79.954415, 12.969448], [79.957621, 12.975445], [79.965356, 12.980448], [79.974252, 12.984346], [79.984178, 12.991267], [79.988451, 12.994869], [79.990402, 12.999198], [79.99333, 13.003563], [79.996554, 13.008439], [80.000116, 13.012623], [80.005126, 13.015907], [80.010318, 13.018219], [80.016501, 13.02217], [80.02202, 13.023517], [80.034625, 13.031203], [80.043649, 13.036089], [80.055232, 13.039871], [80.064279, 13.043869], [80.070442, 13.045719], [80.073258, 13.046254], [80.076848, 13.047038], [80.080418, 13.047365], [80.085031, 13.048909], [80.088672, 13.050236], [80.09075, 13.054072], [80.092272, 13.055241], [80.095404, 13.056388], [80.098843, 13.05686], [80.102116, 13.057435], [80.10678, 13.057169], [80.111343, 13.056835], [80.115102, 13.05683], [80.121729, 13.054867], [80.124709, 13.055076], [80.128116, 13.057519], [80.133696, 13.060151], [80.136212, 13.061116], [80.143494, 13.061626], [80.146649, 13.061988], [80.150608, 13.061978], [80.152649, 13.061003], [80.155752, 13.060733], [80.157842, 13.061657], [80.162058, 13.0614], [80.166101, 13.06241], [80.168674, 13.064241], [80.172171, 13.064916], [80.17598, 13.067442], [80.178372, 13.067793], [80.181544, 13.069904], [80.182818, 13.070636], [80.186851, 13.07186], [80.191238, 13.074305], [80.194568, 13.074606], [80.197497, 13.075757], [80.201403, 13.076383], [80.20815, 13.077183], [80.211775, 13.077113], [80.216014, 13.07525], [80.221409, 13.074438], [80.227228, 13.074029], [80.231552, 13.075199], [80.238006, 13.076685], [80.241288, 13.077474], [80.246025, 13.078062], [80.248877, 13.078609], [80.252378, 13.078873], [80.256037, 13.079132], [80.258773, 13.079431], [80.263972, 13.080557], [80.270627, 13.080855], [80.270794, 13.081803]];
+
+    const PRESET_CORRIDORS = {
+      'bengaluru-chennai': {
+        origin: { nameEn: 'Bengaluru', nameLocal: 'ಬೆಂಗಳೂರು', script: 'Kannada (ಕನ್ನಡ)', lat: 12.9716, lng: 77.5946 },
+        dest: { nameEn: 'Chennai', nameLocal: 'சென்னை', script: 'Tamil (தமிழ்)', lat: 13.0827, lng: 80.2707 },
+        distanceKm: 326.1,
+        durationText: '4 hr 45 min',
+        corridor: 'Via NH 75 • Kolar • Chittoor • NH 48 (Golden Quadrilateral)',
+        waypoints: [
+          { nameLocal: 'ಕೋಲಾರ', nameEn: 'Kolar (NH 75)', lat: 13.1367, lng: 78.1340, isHighway: true },
+          { nameLocal: 'చిత్తూరు', nameEn: 'Chittoor (NH 75)', lat: 13.2172, lng: 79.1003, isHighway: true },
+          { nameLocal: 'வேலூர்', nameEn: 'Vellore (NH 48)', lat: 12.9165, lng: 79.1325, isHighway: true },
+          { nameLocal: 'காஞ்சிபுரம்', nameEn: 'Kanchipuram bypass', lat: 12.8342, lng: 79.7036, isHighway: false },
+          { nameLocal: 'ஸ்ரீபெரும்புதூர்', nameEn: 'Sriperumbudur', lat: 12.9680, lng: 79.9400, isHighway: false }
+        ],
+        steps: [
+          { instruction: 'Depart Bengaluru Central on Old Madras Road / NH 75 towards KR Puram & Hoskote', dist: '28 km', icon: 'depart' },
+          { instruction: 'Continue on NH 75 expressway through Kolar and Mulbagal bypass', dist: '74 km', icon: 'straight' },
+          { instruction: 'Head east past Palamaner and Chittoor along NH 75', dist: '88 km', icon: 'straight' },
+          { instruction: 'Merge onto NH 48 at Ranipet and continue past Kanchipuram & Sriperumbudur', dist: '112 km', icon: 'merge' },
+          { instruction: 'Arrive at Chennai Central / Marina Beach via Poonamallee High Road', dist: '24 km', icon: 'arrive' }
+        ]
+      }
+    };
+
+    function switchSidebarTab(tabName) {
+      appState.activeTab = tabName;
+      const exploreBtn = document.getElementById('tabExploreBtn');
+      const routeBtn = document.getElementById('tabRouteBtn');
+      const exploreView = document.getElementById('exploreView');
+      const navView = document.getElementById('navigationView');
+
+      if (tabName === 'route') {
+        routeBtn.className = 'flex-1 pb-2.5 text-xs font-bold border-b-2 border-emerald-600 text-emerald-800 flex items-center justify-center gap-1.5 transition-all';
+        exploreBtn.className = 'flex-1 pb-2.5 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1.5 transition-all';
+        exploreView.classList.add('hidden');
+        navView.classList.remove('hidden');
+      } else {
+        exploreBtn.className = 'flex-1 pb-2.5 text-xs font-bold border-b-2 border-[#E76F51] text-[#E76F51] flex items-center justify-center gap-1.5 transition-all';
+        routeBtn.className = 'flex-1 pb-2.5 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1.5 transition-all';
+        navView.classList.add('hidden');
+        exploreView.classList.remove('hidden');
+      }
+    }
+
+    async function resolveLocationCoords(query) {
+      if (!query) return null;
+      const qLower = query.toLowerCase().trim();
+
+      // Check preset catalog
+      const preset = BILINGUAL_PRESETS.find(p => 
+        p.id === qLower || 
+        p.nameEn.toLowerCase() === qLower || 
+        p.nameLocal === query.trim() ||
+        p.nameEn.toLowerCase().includes(qLower)
+      );
+
+      if (preset) {
+        return {
+          nameEn: preset.nameEn,
+          nameLocal: preset.nameLocal,
+          script: preset.script,
+          lat: preset.lat,
+          lng: preset.lng
+        };
+      }
+
+      // Geocode via Nominatim (clean GET without custom headers)
+      try {
+        const nomUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=jsonv2&limit=1&accept-language=ta,hi,kn,te,ml,mr,ar,ja,zh,ru,en`;
+        const res = await fetch(nomUrl);
+        if (res.ok) {
+          const list = await res.json();
+          if (list && list.length > 0) {
+            const item = list[0];
+            const parsed = parseDualLanguageNames(item, query);
+            return {
+              nameEn: parsed.secondaryEnglish || query,
+              nameLocal: parsed.primaryLocal || query,
+              script: parsed.detectedScript,
+              lat: parseFloat(item.lat),
+              lng: parseFloat(item.lon)
+            };
+          }
+        }
+      } catch (e) {
+        console.warn('Geocoding notice:', e);
+      }
+
+      // Photon fallback
+      try {
+        const pUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`;
+        const pRes = await fetch(pUrl);
+        if (pRes.ok) {
+          const pGeo = await pRes.json();
+          if (pGeo.features && pGeo.features.length > 0) {
+            const f = pGeo.features[0];
+            return {
+              nameEn: f.properties.name || query,
+              nameLocal: f.properties.name || query,
+              script: 'Verified Node',
+              lat: f.geometry.coordinates[1],
+              lng: f.geometry.coordinates[0]
+            };
+          }
+        }
+      } catch (pe) {
+        console.warn('Photon fallback notice:', pe);
+      }
+
+      return null;
+    }
+
+    function clearRoute(resetInputs = false) {
+      if (appState.routeGlowLayer) {
+        appState.map.removeLayer(appState.routeGlowLayer);
+        appState.routeGlowLayer = null;
+      }
+      if (appState.routePolylineLayer) {
+        appState.map.removeLayer(appState.routePolylineLayer);
+        appState.routePolylineLayer = null;
+      }
+      if (appState.routeStartMarker) {
+        appState.map.removeLayer(appState.routeStartMarker);
+        appState.routeStartMarker = null;
+      }
+      if (appState.routeDestMarker) {
+        appState.map.removeLayer(appState.routeDestMarker);
+        appState.routeDestMarker = null;
+      }
+      if (appState.routeWaypointMarkers && appState.routeWaypointMarkers.length > 0) {
+        appState.routeWaypointMarkers.forEach(m => appState.map.removeLayer(m));
+        appState.routeWaypointMarkers = [];
+      }
+      appState.activeRoute = null;
+
+      const summaryCard = document.getElementById('routeSummaryCard');
+      if (summaryCard) summaryCard.classList.add('hidden');
+
+      if (resetInputs) {
+        const origIn = document.getElementById('routeOriginInput');
+        const destIn = document.getElementById('routeDestInput');
+        if (origIn) origIn.value = '';
+        if (destIn) destIn.value = '';
+      }
+    }
+
+    async function calculateAndRenderRoute(originInput, destInput, isFeaturedBengaluruChennai = false) {
+      const originQuery = (originInput || document.getElementById('routeOriginInput').value || '').trim();
+      const destQuery = (destInput || document.getElementById('routeDestInput').value || '').trim();
+
+      if (!originQuery || !destQuery) {
+        showToast('Please specify both starting point and destination', 'error');
+        return;
+      }
+
+      setLoadingState(true, 'Tracing Vector Highway Route...', `Calculating driving path: ${originQuery} ➔ ${destQuery}`);
+      switchSidebarTab('route');
+
+      try {
+        const isBlrChe = isFeaturedBengaluruChennai || 
+          ((originQuery.toLowerCase().includes('bengaluru') || originQuery.toLowerCase().includes('bangalore')) &&
+           (destQuery.toLowerCase().includes('chennai') || destQuery.toLowerCase().includes('madras')));
+
+        const isCheBlr = !isBlrChe && (
+          (destQuery.toLowerCase().includes('bengaluru') || destQuery.toLowerCase().includes('bangalore')) &&
+          (originQuery.toLowerCase().includes('chennai') || originQuery.toLowerCase().includes('madras'))
+        );
+
+        let originNode = null;
+        let destNode = null;
+        let routeLatLngs = [];
+        let distanceKm = 0;
+        let durationMin = 0;
+        let corridorText = '';
+        let stepInstructions = [];
+        let waypointsList = [];
+
+        if (isBlrChe || isCheBlr) {
+          // Exact reference route matching user screenshot!
+          const data = PRESET_CORRIDORS['bengaluru-chennai'];
+          originNode = isBlrChe ? data.origin : data.dest;
+          destNode = isBlrChe ? data.dest : data.origin;
+          corridorText = data.corridor;
+          distanceKm = data.distanceKm;
+          durationMin = 285; // ~4h 45m
+          stepInstructions = data.steps;
+          waypointsList = data.waypoints;
+
+          // Convert coordinates from [lng, lat] to Leaflet [lat, lng]
+          const rawGeo = BENGALURU_CHENNAI_ROUTE_GEO;
+          routeLatLngs = rawGeo.map(pt => [pt[1], pt[0]]);
+          if (isCheBlr) {
+            routeLatLngs.reverse();
+          }
+
+          // Also attempt live OSRM in background to refresh if available
+          try {
+            const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${originNode.lng},${originNode.lat};${destNode.lng},${destNode.lat}?overview=full&geometries=geojson&steps=true`;
+            const osrmRes = await fetch(osrmUrl);
+            if (osrmRes.ok) {
+              const osrmJson = await osrmRes.json();
+              if (osrmJson.routes && osrmJson.routes.length > 0) {
+                const liveRoute = osrmJson.routes[0];
+                distanceKm = liveRoute.distance / 1000;
+                durationMin = Math.round(liveRoute.duration / 60);
+                routeLatLngs = liveRoute.geometry.coordinates.map(pt => [pt[1], pt[0]]);
+              }
+            }
+          } catch (liveErr) {
+            console.log('Using pre-cached high fidelity Bengaluru-Chennai geometry');
+          }
+        } else {
+          // Dynamic Route for ANY PLACES ON EARTH
+          originNode = await resolveLocationCoords(originQuery);
+          destNode = await resolveLocationCoords(destQuery);
+
+          if (!originNode || !destNode) {
+            throw new Error(`Could not resolve coordinates for ${!originNode ? originQuery : destQuery}`);
+          }
+
+          corridorText = `Arterial route between ${originNode.nameEn} and ${destNode.nameEn}`;
+
+          // Query OSRM Driving API with mirror fallback
+          const osrmEndpoints = [
+            `https://router.project-osrm.org/route/v1/driving/${originNode.lng},${originNode.lat};${destNode.lng},${destNode.lat}?overview=full&geometries=geojson&steps=true`,
+            `https://routing.openstreetmap.de/routed-car/route/v1/driving/${originNode.lng},${originNode.lat};${destNode.lng},${destNode.lat}?overview=full&geometries=geojson&steps=true`
+          ];
+
+          let routeFound = false;
+
+          for (let endpoint of osrmEndpoints) {
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 6500);
+              const res = await fetch(endpoint, { signal: controller.signal });
+              clearTimeout(timeoutId);
+
+              if (res.ok) {
+                const data = await res.json();
+                if (data.routes && data.routes.length > 0) {
+                  const r = data.routes[0];
+                  distanceKm = r.distance / 1000;
+                  durationMin = Math.round(r.duration / 60);
+                  routeLatLngs = r.geometry.coordinates.map(pt => [pt[1], pt[0]]);
+                  
+                  if (r.legs && r.legs[0] && r.legs[0].steps) {
+                    stepInstructions = r.legs[0].steps.filter(s => s.name || s.maneuver).slice(0, 8).map(s => {
+                      return {
+                        instruction: s.name ? `Follow ${s.name}` : (s.maneuver.type || 'Continue straight'),
+                        dist: `${(s.distance / 1000).toFixed(1)} km`,
+                        icon: s.maneuver.modifier ? s.maneuver.modifier : 'straight'
+                      };
+                    });
+                  }
+                  routeFound = true;
+                  break;
+                }
+              }
+            } catch (epErr) {
+              console.warn('OSRM mirror notice:', epErr);
+            }
+          }
+
+          if (!routeFound || routeLatLngs.length === 0) {
+            // Direct corridor fallback
+            routeLatLngs = [
+              [originNode.lat, originNode.lng],
+              [(originNode.lat + destNode.lat) / 2 + 0.05, (originNode.lng + destNode.lng) / 2 - 0.05],
+              [destNode.lat, destNode.lng]
+            ];
+            distanceKm = Math.round(appState.map.distance([originNode.lat, originNode.lng], [destNode.lat, destNode.lng]) / 1000);
+            durationMin = Math.round((distanceKm / 65) * 60);
+            stepInstructions = [
+              { instruction: `Depart from ${originNode.nameLocal} (${originNode.nameEn})`, dist: '0 km', icon: 'depart' },
+              { instruction: `Proceed along major highway corridor towards destination`, dist: `${Math.round(distanceKm * 0.7)} km`, icon: 'straight' },
+              { instruction: `Arrive at destination: ${destNode.nameLocal} (${destNode.nameEn})`, dist: `${Math.round(distanceKm * 0.3)} km`, icon: 'arrive' }
+            ];
+          }
+        }
+
+        // Render Route on Leaflet Map
+        clearRoute(false);
+
+        // 1. Soft Route Glow Underlay
+        appState.routeGlowLayer = L.polyline(routeLatLngs, {
+          color: '#4169E1',
+          weight: 12,
+          opacity: 0.28,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(appState.map);
+
+        // 2. Primary Route Polyline (Soft cornflower blue, exactly matching reference image)
+        appState.routePolylineLayer = L.polyline(routeLatLngs, {
+          color: '#6495ED',
+          weight: 7.5,
+          opacity: 0.85,
+          lineCap: 'round',
+          lineJoin: 'round',
+          className: 'leaflet-route-line'
+        }).addTo(appState.map);
+
+        // 3. Green Start Marker (Origin A) with Directional Arrow
+        appState.routeStartMarker = L.marker([originNode.lat, originNode.lng], {
+          icon: createTeardropIcon('greenStart', 42),
+          zIndexOffset: 1000
+        }).addTo(appState.map);
+
+        const startPopup = `
+          <div class="p-3 text-slate-800">
+            <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">🟢 Origin Point A</span>
+            <div class="text-lg font-extrabold text-slate-900 mt-1">${originNode.nameLocal}</div>
+            <div class="text-xs font-bold text-emerald-600 uppercase tracking-wider">${originNode.nameEn}</div>
+            <div class="text-[10px] text-slate-400 mt-1">Starting point of vector road navigation</div>
+          </div>
+        `;
+        appState.routeStartMarker.bindPopup(startPopup);
+
+        // 4. Red Destination Marker (Finish B) with Flag
+        appState.routeDestMarker = L.marker([destNode.lat, destNode.lng], {
+          icon: createTeardropIcon('redFinish', 42),
+          zIndexOffset: 1000
+        }).addTo(appState.map);
+
+        const destPopup = `
+          <div class="p-3 text-slate-800">
+            <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-100 text-rose-800">🏁 Destination Point B</span>
+            <div class="text-lg font-extrabold text-slate-900 mt-1">${destNode.nameLocal}</div>
+            <div class="text-xs font-bold text-rose-600 uppercase tracking-wider">${destNode.nameEn}</div>
+            <div class="text-[10px] text-slate-400 mt-1">Finish point of vector road navigation</div>
+          </div>
+        `;
+        appState.routeDestMarker.bindPopup(destPopup);
+
+        // 5. Intermediate Bilingual Corridor Waypoints
+        if (waypointsList && waypointsList.length > 0) {
+          waypointsList.forEach(wp => {
+            const wpIcon = createStreetLabelIcon(wp.nameLocal, wp.nameEn, wp.isHighway);
+            const wpMarker = L.marker([wp.lat, wp.lng], { icon: wpIcon }).addTo(appState.map);
+            appState.routeWaypointMarkers.push(wpMarker);
+          });
+        }
+
+        // 6. Fit Map Bounds with Ergonomic Padding
+        appState.map.fitBounds(appState.routePolylineLayer.getBounds(), {
+          padding: [60, 60],
+          maxZoom: 13,
+          duration: 1.5
+        });
+
+        // 7. Update UI Route Summary Card
+        const hours = Math.floor(durationMin / 60);
+        const mins = durationMin % 60;
+        const durationStr = hours > 0 ? `${hours} hr ${mins} min` : `${mins} min`;
+
+        document.getElementById('routeStartTitle').textContent = originNode.nameLocal;
+        document.getElementById('routeStartSub').textContent = `${originNode.nameEn} (Origin)`;
+        document.getElementById('routeEndTitle').textContent = destNode.nameLocal;
+        document.getElementById('routeEndSub').textContent = `${destNode.nameEn} (Destination)`;
+        document.getElementById('routeDistanceVal').textContent = `${distanceKm.toFixed(1)} km`;
+        document.getElementById('routeDurationVal').textContent = durationStr;
+        document.getElementById('routeCorridorNote').textContent = `🛣️ ${corridorText}`;
+        document.getElementById('stepsCount').textContent = stepInstructions.length;
+
+        // Populate Turn-by-Turn Guidance Drawer
+        const stepsContainer = document.getElementById('stepsContainer');
+        stepsContainer.innerHTML = '';
+
+        stepInstructions.forEach((step, idx) => {
+          const stepDiv = document.createElement('div');
+          stepDiv.className = 'p-2 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-2 text-xs text-slate-700';
+          
+          let iconSvg = '⬆️';
+          if (step.icon === 'depart') iconSvg = '🟢';
+          else if (step.icon === 'arrive') iconSvg = '🏁';
+          else if (step.icon === 'merge') iconSvg = '🔀';
+          else if (step.icon.includes('right')) iconSvg = '↗️';
+          else if (step.icon.includes('left')) iconSvg = '↖️';
+
+          stepDiv.innerHTML = `
+            <span class="text-sm shrink-0">${iconSvg}</span>
+            <div class="flex-1">
+              <div class="font-bold text-slate-800">${step.instruction}</div>
+              <div class="text-[10px] text-slate-400 font-mono mt-0.5">${step.dist}</div>
+            </div>
+            <span class="text-[10px] text-slate-400 font-bold">#${idx + 1}</span>
+          `;
+          stepsContainer.appendChild(stepDiv);
+        });
+
+        // Unhide Summary Card
+        document.getElementById('routeSummaryCard').classList.remove('hidden');
+
+        showToast(`Route mapped: ${originNode.nameEn} ➔ ${destNode.nameEn} (${distanceKm.toFixed(0)} km)`, 'success');
+
+      } catch (err) {
+        console.error('Route calculation error:', err);
+        showToast(`Route notice: ${err.message}`, 'error');
+      } finally {
+        setLoadingState(false);
+      }
+    }
+
+
+    // --- 10. REAL-TIME FORM VALIDATION & UI FEEDBACK (Requirement 3) ---
+    function setupFormValidation() {
+      const form = document.getElementById('searchForm');
+      const input = document.getElementById('locationInput');
+      const submitBtn = document.getElementById('searchSubmitBtn');
+      const feedback = document.getElementById('validationFeedback');
+      const clearBtn = document.getElementById('clearInputBtn');
+      const charCount = document.getElementById('inputCharCount');
+
+      // Helper function to validate input
+      function validateInput() {
+        const value = input.value.trim();
+        const length = value.length;
+
+        // Toggle clear button
+        if (length > 0) {
+          clearBtn.classList.remove('hidden');
+        } else {
+          clearBtn.classList.add('hidden');
+        }
+
+        // Live validation states
+        if (length === 0) {
+          submitBtn.disabled = true;
+          input.className = 'w-full pl-10 pr-10 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all';
+          feedback.innerHTML = `<span class="inline-block w-1.5 h-1.5 rounded-full bg-slate-300"></span><span>Enter any city, country, or point of interest</span>`;
+          feedback.className = 'mt-1.5 text-xs flex items-center gap-1.5 text-slate-500';
+          charCount.textContent = 'Min 2 chars';
+          charCount.className = 'text-[11px] font-normal text-slate-400';
+          return false;
+        }
+
+        if (length < 2) {
+          submitBtn.disabled = true;
+          input.className = 'w-full pl-10 pr-10 py-2.5 text-sm bg-amber-50/50 border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all';
+          feedback.innerHTML = `<svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg><span class="text-amber-700">Please enter at least 2 characters</span>`;
+          feedback.className = 'mt-1.5 text-xs flex items-center gap-1.5 text-amber-700';
+          charCount.textContent = `${length}/2 required`;
+          charCount.className = 'text-[11px] font-medium text-amber-600';
+          return false;
+        }
+
+        // Valid State
+        submitBtn.disabled = false;
+        input.className = 'w-full pl-10 pr-10 py-2.5 text-sm bg-emerald-50/30 border border-emerald-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all';
+        feedback.innerHTML = `<svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg><span class="text-emerald-700 font-medium">Ready to search & translate</span>`;
+        feedback.className = 'mt-1.5 text-xs flex items-center gap-1.5 text-emerald-700';
+        charCount.textContent = `${length} characters`;
+        charCount.className = 'text-[11px] font-medium text-emerald-600';
+        return true;
+      }
+
+      // REQUIRED EVENT 2: input / change on form inputs for live validation feedback
+      input.addEventListener('input', validateInput);
+      input.addEventListener('change', validateInput);
+
+      clearBtn.addEventListener('click', () => {
+        input.value = '';
+        input.focus();
+        validateInput();
+      });
+
+      // REQUIRED EVENT 1: submit on search form to trigger API fetching and map re-centering
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (validateInput()) {
+          const query = input.value.trim();
+          searchLocation(query);
+        }
+      });
+    }
+
+    // --- 11. REQUIRED EVENT LISTENERS (Requirement 5) ---
+    function setupEventListeners() {
+      // Setup validation & form submit listeners
+      setupFormValidation();
+
+      // REQUIRED EVENT 3: click or moveend on the map
+      // Event 3A: Map Click -> Reverse geocodes clicked point
+      appState.map.on('click', (e) => {
+        const { lat, lng } = e.latlng;
+        reverseGeocode(lat, lng);
+      });
+
+      // Event 3B: Map Moveend -> Updates telemetry coords and zoom, and auto-scans streets if zoomed in
+      let moveEndStreetDebounce = null;
+      appState.map.on('moveend', () => {
+        const center = appState.map.getCenter();
+        const zoom = appState.map.getZoom();
+        updateTelemetry(center.lat, center.lng, zoom);
+
+        // When zoomed into street level (zoom >= 13), automatically fetch and render bilingual streets for visible area
+        if (zoom >= 13) {
+          clearTimeout(moveEndStreetDebounce);
+          moveEndStreetDebounce = setTimeout(() => {
+            fetchDynamicBilingualStreets(center.lat, center.lng);
+          }, 1400);
+        }
+      });
+
+      // Manual Street Scanner Button in top toolbar
+      const scanStreetsBtn = document.getElementById('scanStreetsBtn');
+      if (scanStreetsBtn) {
+        scanStreetsBtn.addEventListener('click', () => {
+          const center = appState.map.getCenter();
+          fetchDynamicBilingualStreets(center.lat, center.lng);
+          showToast('Scanning all streets in current view...', 'info');
+        });
+      }
+
+      // Browser Geolocation Button
+      document.getElementById('currentLocationBtn').addEventListener('click', () => {
+        if (!navigator.geolocation) {
+          showToast('Geolocation is not supported by your browser', 'error');
+          return;
+        }
+
+        showToast('Acquiring GPS coordinates...', 'info');
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude, longitude } = pos.coords;
+            appState.map.flyTo([latitude, longitude], 14);
+            reverseGeocode(latitude, longitude);
+            showToast('Centered on your GPS location', 'success');
+          },
+          (err) => {
+            showToast(`Location error: ${err.message}`, 'error');
+          },
+          { timeout: 7000 }
+        );
+      });
+
+      // Action: Speak Local Name (Web Speech API)
+      document.getElementById('speakNameBtn').addEventListener('click', () => {
+        if (!appState.activeLocation) return;
+        const text = appState.activeLocation.primaryLocal;
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.rate = 0.9;
+          window.speechSynthesis.speak(utterance);
+          showToast(`Pronouncing: "${text}"`, 'info');
+        } else {
+          showToast(`Speech synthesis not supported in this browser`, 'info');
+        }
+      });
+
+      // Action: Copy Coordinates
+      document.getElementById('copyCoordsBtn').addEventListener('click', () => {
+        if (!appState.activeLocation) return;
+        const text = `${appState.activeLocation.lat}, ${appState.activeLocation.lng}`;
+        navigator.clipboard.writeText(text).then(() => {
+          showToast(`Copied coordinates: ${text}`, 'success');
+        }).catch(() => {
+          showToast(`Failed to copy coordinates`, 'error');
+        });
+      });
+
+      // Action: Re-center map button
+      document.getElementById('centerMapBtn').addEventListener('click', () => {
+        if (!appState.activeLocation) return;
+        appState.map.flyTo([appState.activeLocation.lat, appState.activeLocation.lng], 14);
+      });
+
+      // Map Style Switcher buttons
+      const stylePastelRoadBtn = document.getElementById('stylePastelRoad');
+      const styleWarmPastelBtn = document.getElementById('styleWarmPastel');
+      const styleCleanMinimalBtn = document.getElementById('styleCleanMinimal');
+
+      function setTileFilterStyle(filterClass, activeBtn) {
+        const container = appState.activeTileLayer.getContainer();
+        if (container) {
+          container.className = `leaflet-tile-pane ${filterClass}`;
+        }
+        
+        [stylePastelRoadBtn, styleWarmPastelBtn, styleCleanMinimalBtn].forEach(b => {
+          b.className = 'px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all';
+        });
+
+        activeBtn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-amber-100 text-amber-900 border border-amber-300';
+        showToast(`Map theme updated: ${activeBtn.textContent.trim()}`, 'info');
+      }
+
+      stylePastelRoadBtn.addEventListener('click', () => setTileFilterStyle('pastel-tiles', stylePastelRoadBtn));
+      styleWarmPastelBtn.addEventListener('click', () => setTileFilterStyle('pastel-tiles-warm', styleWarmPastelBtn));
+      styleCleanMinimalBtn.addEventListener('click', () => setTileFilterStyle('pastel-tiles-clean', styleCleanMinimalBtn));
+
+
+      // --- ROUTE NAVIGATION EVENT LISTENERS ---
+      // Tab switcher
+      const tabExploreBtn = document.getElementById('tabExploreBtn');
+      const tabRouteBtn = document.getElementById('tabRouteBtn');
+      if (tabExploreBtn) tabExploreBtn.addEventListener('click', () => switchSidebarTab('explore'));
+      if (tabRouteBtn) tabRouteBtn.addEventListener('click', () => switchSidebarTab('route'));
+
+      // Floating directions button
+      const floatingDirBtn = document.getElementById('toggleRouteNavFloatingBtn');
+      if (floatingDirBtn) {
+        floatingDirBtn.addEventListener('click', () => {
+          switchSidebarTab('route');
+          document.getElementById('routeOriginInput').focus();
+          showToast('Route Navigation Planner active', 'info');
+        });
+      }
+
+      // Route form submission
+      const routeForm = document.getElementById('routeForm');
+      if (routeForm) {
+        routeForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          calculateAndRenderRoute();
+        });
+      }
+
+      // Swap origin and destination
+      const swapRouteBtn = document.getElementById('swapRouteBtn');
+      if (swapRouteBtn) {
+        swapRouteBtn.addEventListener('click', () => {
+          const origIn = document.getElementById('routeOriginInput');
+          const destIn = document.getElementById('routeDestInput');
+          const temp = origIn.value;
+          origIn.value = destIn.value;
+          destIn.value = temp;
+          showToast('Swapped Origin & Destination', 'info');
+          if (appState.routePolylineLayer) {
+            calculateAndRenderRoute();
+          }
+        });
+      }
+
+      // Featured preset: Bengaluru ⇄ Chennai (Exact reference match)
+      const presetBlrChe = document.getElementById('presetRouteBlrChe');
+      if (presetBlrChe) {
+        presetBlrChe.addEventListener('click', () => {
+          document.getElementById('routeOriginInput').value = 'Bengaluru';
+          document.getElementById('routeDestInput').value = 'Chennai';
+          calculateAndRenderRoute('Bengaluru', 'Chennai', true);
+        });
+      }
+
+      // Other quick corridor presets
+      document.querySelectorAll('.preset-quick-route').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const orig = btn.getAttribute('data-origin');
+          const dest = btn.getAttribute('data-dest');
+          document.getElementById('routeOriginInput').value = orig;
+          document.getElementById('routeDestInput').value = dest;
+          calculateAndRenderRoute(orig, dest, false);
+        });
+      });
+
+      // Route summary card buttons
+      const focusRouteBtn = document.getElementById('focusRouteBtn');
+      if (focusRouteBtn) {
+        focusRouteBtn.addEventListener('click', () => {
+          if (appState.routePolylineLayer) {
+            appState.map.fitBounds(appState.routePolylineLayer.getBounds(), { padding: [60, 60] });
+          }
+        });
+      }
+
+      const clearRouteBtn = document.getElementById('clearRouteBtn');
+      if (clearRouteBtn) {
+        clearRouteBtn.addEventListener('click', () => {
+          clearRoute(true);
+          showToast('Cleared active route navigation', 'info');
+        });
+      }
+
+      // Toggle turn-by-turn guidance drawer
+      const toggleStepsBtn = document.getElementById('toggleStepsBtn');
+      const stepsContainer = document.getElementById('stepsContainer');
+      const stepsArrow = document.getElementById('stepsToggleArrow');
+      if (toggleStepsBtn && stepsContainer) {
+        toggleStepsBtn.addEventListener('click', () => {
+          stepsContainer.classList.toggle('hidden');
+          if (stepsArrow) {
+            stepsArrow.textContent = stepsContainer.classList.contains('hidden') ? '▼' : '▲';
+          }
+        });
+      }
+
+      // Clear origin and destination inputs
+      const clearOriginBtn = document.getElementById('clearOriginBtn');
+      if (clearOriginBtn) {
+        clearOriginBtn.addEventListener('click', () => {
+          document.getElementById('routeOriginInput').value = '';
+          document.getElementById('routeOriginInput').focus();
+        });
+      }
+
+      const clearDestBtn = document.getElementById('clearDestBtn');
+      if (clearDestBtn) {
+        clearDestBtn.addEventListener('click', () => {
+          document.getElementById('routeDestInput').value = '';
+          document.getElementById('routeDestInput').focus();
+        });
+      }
+
+      // Use GPS for origin
+      const useOriginGpsBtn = document.getElementById('useOriginGpsBtn');
+      if (useOriginGpsBtn) {
+        useOriginGpsBtn.addEventListener('click', () => {
+          if (!navigator.geolocation) {
+            showToast('Geolocation not supported by browser', 'error');
+            return;
+          }
+          showToast('Acquiring Origin GPS coordinates...', 'info');
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const { latitude, longitude } = pos.coords;
+              document.getElementById('routeOriginInput').value = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+              showToast('Set GPS coordinates as Starting Point', 'success');
+            },
+            (err) => {
+              showToast(`GPS error: ${err.message}`, 'error');
+            }
+          );
+        });
+      }
+
+
+            // Toggle Palette Specs Bar
+      document.getElementById('togglePaletteBtn').addEventListener('click', () => {
+        const bar = document.getElementById('paletteSpecsBar');
+        bar.classList.toggle('hidden');
+      });
+    }
+
+    // --- 12. UI HELPERS: TOASTS, EMPTY STATES, TELEMETRY ---
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      const typeStyles = {
+        success: 'bg-emerald-900/90 text-emerald-100 border-emerald-700',
+        error: 'bg-rose-900/90 text-rose-100 border-rose-700',
+        info: 'bg-slate-900/90 text-slate-100 border-slate-700'
+      };
+
+      const iconMap = {
+        success: `<svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`,
+        error: `<svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>`,
+        info: `<svg class="w-4 h-4 text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
+      };
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl backdrop-blur-md border text-xs font-medium transition-all duration-300 transform translate-y-2 opacity-0 ${typeStyles[type] || typeStyles.info}`;
+      toast.innerHTML = `
+        ${iconMap[type] || iconMap.info}
+        <span class="flex-1">${message}</span>
+        <button class="opacity-60 hover:opacity-100 ml-1">✕</button>
+      `;
+
+      container.appendChild(toast);
+
+      // Animate in
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      // Close on click
+      toast.querySelector('button').addEventListener('click', () => {
+        dismissToast(toast);
+      });
+
+      // Auto dismiss after 3.8s
+      setTimeout(() => {
+        dismissToast(toast);
+      }, 3800);
+    }
+
+    function dismissToast(toast) {
+      toast.classList.add('opacity-0', 'scale-95');
+      setTimeout(() => {
+        if (toast.parentElement) toast.remove();
+      }, 300);
+    }
+
+    function setLoadingState(isLoading, title = '', subtitle = '') {
+      appState.isFetching = isLoading;
+      const overlay = document.getElementById('loadingOverlay');
+      const titleEl = document.getElementById('loadingTitle');
+      const subtitleEl = document.getElementById('loadingSubtitle');
+
+      if (isLoading) {
+        if (title) titleEl.textContent = title;
+        if (subtitle) subtitleEl.textContent = subtitle;
+        overlay.classList.remove('pointer-events-none', 'opacity-0');
+        overlay.classList.add('opacity-100');
+        document.getElementById('telemetryStatus').textContent = 'Fetching Geo-Data...';
+      } else {
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+        overlay.classList.remove('opacity-100');
+        document.getElementById('telemetryStatus').textContent = 'Map Ready';
+      }
+    }
+
+    function showEmptyState(query) {
+      document.getElementById('locationDetailCard').classList.add('hidden');
+      const emptyState = document.getElementById('emptyStateBanner');
+      emptyState.classList.remove('hidden');
+      emptyState.querySelector('h4').textContent = `No matches for "${query}"`;
+      showToast(`No locations found for "${query}"`, 'error');
+    }
+
+    function updateTelemetry(lat, lng, zoom) {
+      const coordsEl = document.getElementById('telemetryCoords');
+      if (coordsEl) {
+        coordsEl.textContent = `Zoom: ${zoom} | ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      }
+    }
+
+    // --- 13. BOOTSTRAP APPLICATION ON DOM LOAD ---
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      setupEventListeners();
+      showToast('TerraLingua Pastel Vector Map Ready', 'success');
+    });
+  </script>
+</body>
+</html>
